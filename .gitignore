@@ -1,0 +1,16 @@
+node_modules
+.next
+.env
+.env.local
+.env*.local
+.vercel
+*.log
+.DS_Store
+.convex
+
+# contracts/ hardhat workspace artifacts
+contracts/node_modules
+contracts/artifacts
+contracts/cache
+contracts/dist
+contracts/.env

@@ -1,0 +1,24 @@
+{
+  "name": "trstit-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hardhat workspace for the TrstItVerifier CoFHE contract.",
+  "scripts": {
+    "compile": "hardhat compile",
+    "deploy:arb-sepolia": "hardhat run scripts/deploy.ts --network arbitrumSepolia",
+    "deploy:sepolia": "hardhat run scripts/deploy.ts --network sepolia"
+  },
+  "dependencies": {
+    "@fhenixprotocol/cofhe-contracts": "^0.1.4"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ethers": "^3.0.8",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@types/node": "^22.9.0",
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.0",
+    "hardhat": "^2.22.17",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3"
+  }
+}

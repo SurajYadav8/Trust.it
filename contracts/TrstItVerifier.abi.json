@@ -1,0 +1,351 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "uint8",
+        "name": "got",
+        "type": "uint8"
+      },
+      {
+        "internalType": "uint8",
+        "name": "expected",
+        "type": "uint8"
+      }
+    ],
+    "name": "InvalidEncryptedInput",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "int32",
+        "name": "value",
+        "type": "int32"
+      }
+    ],
+    "name": "SecurityZoneOutOfBounds",
+    "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "tenant",
+        "type": "address"
+      }
+    ],
+    "name": "ProfileSubmitted",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "verificationId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "overallEligible",
+        "type": "bool"
+      }
+    ],
+    "name": "VerificationPublished",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "verificationId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "tenant",
+        "type": "address"
+      }
+    ],
+    "name": "VerificationRequested",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "verificationId",
+        "type": "uint256"
+      }
+    ],
+    "name": "getVerificationHandles",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "tenant",
+        "type": "address"
+      },
+      {
+        "internalType": "ebool",
+        "name": "passSalary",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "ebool",
+        "name": "passCredit",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "ebool",
+        "name": "passEmployment",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "tenant",
+        "type": "address"
+      }
+    ],
+    "name": "hasProfile",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "nextVerificationId",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "verificationId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "passSalaryPlain",
+        "type": "bool"
+      },
+      {
+        "internalType": "bytes",
+        "name": "passSalarySig",
+        "type": "bytes"
+      },
+      {
+        "internalType": "bool",
+        "name": "passCreditPlain",
+        "type": "bool"
+      },
+      {
+        "internalType": "bytes",
+        "name": "passCreditSig",
+        "type": "bytes"
+      },
+      {
+        "internalType": "bool",
+        "name": "passEmploymentPlain",
+        "type": "bool"
+      },
+      {
+        "internalType": "bytes",
+        "name": "passEmploymentSig",
+        "type": "bytes"
+      }
+    ],
+    "name": "publishVerificationResult",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "verificationId",
+        "type": "uint256"
+      }
+    ],
+    "name": "readVerification",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "tenant",
+        "type": "address"
+      },
+      {
+        "internalType": "bool",
+        "name": "ready",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "passSalary",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "passCredit",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "passEmployment",
+        "type": "bool"
+      },
+      {
+        "internalType": "bool",
+        "name": "overallEligible",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "ctHash",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint8",
+            "name": "securityZone",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "utype",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes",
+            "name": "signature",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct InEuint64",
+        "name": "inSalary",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "ctHash",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint8",
+            "name": "securityZone",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "utype",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes",
+            "name": "signature",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct InEuint32",
+        "name": "inCredit",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "ctHash",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint8",
+            "name": "securityZone",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "utype",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes",
+            "name": "signature",
+            "type": "bytes"
+          }
+        ],
+        "internalType": "struct InEuint32",
+        "name": "inEmployment",
+        "type": "tuple"
+      }
+    ],
+    "name": "submitProfile",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint64",
+        "name": "minSalary",
+        "type": "uint64"
+      },
+      {
+        "internalType": "uint32",
+        "name": "minCredit",
+        "type": "uint32"
+      },
+      {
+        "internalType": "uint32",
+        "name": "minEmploymentMonths",
+        "type": "uint32"
+      }
+    ],
+    "name": "verify",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "verificationId",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+]
