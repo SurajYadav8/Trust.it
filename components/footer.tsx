@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { Container } from "@/components/ui/container";
+import { cn } from "@/lib/format";
 
 export function Footer() {
   const pathname = usePathname() ?? "/";
@@ -17,19 +18,33 @@ export function Footer() {
           rental screening
         </div>
         <div className="flex items-center gap-4">
-          <span>
-            Powered by{" "}
-            <a
-              href="https://fhenix.zone"
-              target="_blank"
-              rel="noreferrer"
-              className="text-ink-700 hover:text-brand-600 underline-offset-2 hover:underline dark:text-white/70 dark:hover:text-accent-300"
-            >
-              Fhenix coFHE
-            </a>
+          <span className="flex items-center gap-2">
+            Powered by <FhenixLogo />
           </span>
         </div>
       </Container>
     </footer>
+  );
+}
+
+function FhenixLogo({ className }: { className?: string }) {
+  return (
+    <a
+      href="https://fhenix.io"
+      target="_blank"
+      rel="noreferrer"
+      aria-label="Fhenix"
+      className={cn(
+        "inline-flex items-baseline font-mono text-[0.95rem] font-bold leading-none no-underline transition-opacity hover:opacity-80",
+        className
+      )}
+    >
+      <span className="text-ink-400 dark:text-white/45">(</span>
+      <span className="text-ink-900 dark:text-white">fhenix</span>
+      <span className="text-accent-500 drop-shadow-[0_0_8px_rgba(34,211,238,0.6)] dark:text-accent-400 dark:drop-shadow-[0_0_10px_rgba(34,211,238,0.75)]">
+        *
+      </span>
+      <span className="text-ink-400 dark:text-white/45">)</span>
+    </a>
   );
 }

@@ -26,8 +26,10 @@ export async function submitProfileOnChain(params: {
   salaryCt: unknown;
   creditCt: unknown;
   employmentCt: unknown;
+  onTxRequested?: () => void;
 }): Promise<{ txHash: string }> {
   const contract = await getContract(params.walletProvider);
+  params.onTxRequested?.();
   const tx = await contract.submitProfile(
     params.salaryCt,
     params.creditCt,

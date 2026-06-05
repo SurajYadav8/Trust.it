@@ -17,6 +17,9 @@ export const upsert = mutation({
     encSalary: v.string(),
     encCreditScore: v.string(),
     encEmploymentMonths: v.string(),
+    salaryCurrency: v.optional(
+      v.union(v.literal("INR"), v.literal("USD"))
+    ),
     onChainTxHash: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -46,6 +49,7 @@ export const upsert = mutation({
         encSalary: args.encSalary,
         encCreditScore: args.encCreditScore,
         encEmploymentMonths: args.encEmploymentMonths,
+        salaryCurrency: args.salaryCurrency,
         onChainTxHash: args.onChainTxHash,
         updatedAt: now,
       });
@@ -56,6 +60,7 @@ export const upsert = mutation({
       encSalary: args.encSalary,
       encCreditScore: args.encCreditScore,
       encEmploymentMonths: args.encEmploymentMonths,
+      salaryCurrency: args.salaryCurrency,
       onChainTxHash: args.onChainTxHash,
       updatedAt: now,
     });

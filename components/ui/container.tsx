@@ -36,7 +36,7 @@ export function PageHeading({
           {title}
         </h1>
         {description ? (
-          <p className="text-sm text-ink-500 mt-1.5 max-w-2xl dark:text-white/50">
+          <p className="text-sm text-ink-600 mt-1.5 max-w-2xl dark:text-white/65">
             {description}
           </p>
         ) : null}

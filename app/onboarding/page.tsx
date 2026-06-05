@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { WalletConnectButton } from "@/components/wallet-connect";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/format";
+import { PRIMARY_CARD_CLASS } from "@/lib/ui-classes";
 
 export default function OnboardingPage() {
   return (
@@ -67,7 +68,7 @@ function Onboarding() {
   return (
     <Container className="py-16">
       <div className="max-w-xl mx-auto">
-        <Card>
+        <Card className={PRIMARY_CARD_CLASS}>
           <CardHeader>
             <Badge tone="brand" className="mb-2">
               Step 1 of 1

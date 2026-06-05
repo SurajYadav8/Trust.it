@@ -14,6 +14,9 @@ export default defineSchema({
     encSalary: v.string(),
     encCreditScore: v.string(),
     encEmploymentMonths: v.string(),
+    salaryCurrency: v.optional(
+      v.union(v.literal("INR"), v.literal("USD"))
+    ),
     onChainTxHash: v.optional(v.string()),
     updatedAt: v.number(),
   }).index("by_wallet", ["walletAddress"]),

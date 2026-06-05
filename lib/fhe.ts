@@ -84,6 +84,18 @@ export interface EncryptedProfileInputs {
 
 export type EncryptProgress = (state: string) => void;
 
+function isWalletInteractionStep(step: string): boolean {
+  const s = step.toLowerCase();
+  return (
+    s.includes("permit") ||
+    s.includes("sign") ||
+    s.includes("wallet") ||
+    s.includes("approve") ||
+    s.includes("useroperation") ||
+    s.includes("request")
+  );
+}
+
 export async function encryptProfile(params: {
   publicClient: AnyPublicClient;
   walletClient: AnyWalletClient;
@@ -92,6 +104,8 @@ export async function encryptProfile(params: {
   creditScore: number;
   employmentMonths: number;
   onState?: EncryptProgress;
+  onWalletRequest?: () => void;
+  onEncryptProgress?: (index: number, total: number) => void;
 }): Promise<EncryptedProfileInputs> {
   const client = (await ensureConnected(params)) as {
     encryptInputs: (
@@ -107,6 +121,7 @@ export async function encryptProfile(params: {
   const { Encryptable } = await getCore();
 
   try {
+    let encryptStepIndex = 0;
     const result = await client
       .encryptInputs([
         Encryptable.uint64(BigInt(Math.max(0, Math.floor(params.salary)))),
@@ -116,7 +131,14 @@ export async function encryptProfile(params: {
         ),
       ])
       .onStep((step) => {
-        if (params.onState) params.onState(String(step));
+        const label = String(step);
+        if (params.onState) params.onState(label);
+        if (isWalletInteractionStep(label)) {
+          params.onWalletRequest?.();
+        } else {
+          params.onEncryptProgress?.(encryptStepIndex, 3);
+          encryptStepIndex += 1;
+        }
       })
       .execute();
 

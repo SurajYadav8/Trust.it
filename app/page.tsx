@@ -59,15 +59,34 @@ export default function LandingPage() {
     return () => clearTimeout(t);
   }, [step, reduceMotion]);
 
-  const ease = [0.16, 1, 0.3, 1] as const;
-  const fade: Variants = {
-    hidden: { opacity: 0, y: 12 },
-    show: (delay: number = 0) => ({
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.8, ease, delay },
-    }),
-  };
+  const ease = HERO_EASE;
+
+  // Entry sequence on every load/refresh:
+  //   idle (background only) → enter hero → decode wordmark → enable UI.
+  const [entryPhase, setEntryPhase] = useState<EntryPhase>(
+    reduceMotion ? "ready" : "idle"
+  );
+
+  useEffect(() => {
+    if (reduceMotion || entryPhase !== "idle") return;
+    const t = setTimeout(() => setEntryPhase("enter"), 160);
+    return () => clearTimeout(t);
+  }, [entryPhase, reduceMotion]);
+
+  useEffect(() => {
+    if (reduceMotion || entryPhase !== "enter") return;
+    const t = setTimeout(() => setEntryPhase("decode"), HERO_ENTER_MS + 280);
+    return () => clearTimeout(t);
+  }, [entryPhase, reduceMotion]);
+
+  useEffect(() => {
+    if (reduceMotion || entryPhase !== "decode") return;
+    const t = setTimeout(() => setEntryPhase("ready"), DECODE_TOTAL_MS);
+    return () => clearTimeout(t);
+  }, [entryPhase, reduceMotion]);
+
+  const entryReady = entryPhase === "ready";
+  const decodeActive = entryPhase === "decode";
 
   const showRole = step === "role" && !!address;
 
@@ -76,7 +95,12 @@ export default function LandingPage() {
       <Background reduceMotion={!!reduceMotion} />
 
       <div className="relative z-10 flex min-h-screen flex-col">
-        <LandingHeader address={address} isConnected={isConnected} />
+        <LandingHeader
+          address={address}
+          isConnected={isConnected}
+          entryReady={entryReady}
+          reduceMotion={!!reduceMotion}
+        />
 
         <main className="flex flex-1 flex-col items-center justify-center px-6 py-24 text-center sm:py-32">
           <AnimatePresence mode="wait" initial={false}>
@@ -96,20 +120,30 @@ export default function LandingPage() {
               /* ---- Step 1: hero (connect / confirm action slot) ---- */
               <motion.div
                 key="hero"
-                initial={false}
-                animate={{ opacity: 1, y: 0 }}
+                variants={heroContainerVariants}
+                initial={reduceMotion ? false : "hidden"}
+                animate={
+                  reduceMotion
+                    ? undefined
+                    : entryPhase === "idle"
+                      ? "hidden"
+                      : entryPhase === "enter"
+                        ? "enter"
+                        : "visible"
+                }
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.5, ease }}
                 className="flex flex-col items-center"
               >
-                <Wordmark reduceMotion={!!reduceMotion} />
+                <Wordmark
+                  reduceMotion={!!reduceMotion}
+                  decodeActive={decodeActive}
+                  interactionsEnabled={entryReady}
+                />
 
                 {/* Tagline */}
                 <motion.p
-                  variants={fade}
-                  custom={reduceMotion ? 0 : 0.9}
-                  initial="hidden"
-                  animate="show"
+                  variants={heroItemVariants}
                   className="mt-12 max-w-md text-base font-light tracking-wide text-ink-500 sm:text-lg dark:text-white/70"
                 >
                   Prove trust. Not your data.
@@ -117,10 +151,7 @@ export default function LandingPage() {
 
                 {/* Powered by Fhenix */}
                 <motion.div
-                  variants={fade}
-                  custom={reduceMotion ? 0 : 1.1}
-                  initial="hidden"
-                  animate="show"
+                  variants={heroItemVariants}
                   className="mt-10 flex items-center gap-2 text-[0.7rem] uppercase tracking-[0.25em] text-ink-400 dark:text-white/35"
                 >
                   <span className="h-px w-6 bg-ink-300/60 dark:bg-white/15" />
@@ -133,13 +164,16 @@ export default function LandingPage() {
                   <span className="h-px w-6 bg-ink-300/60 dark:bg-white/15" />
                 </motion.div>
 
-                {/* Action slot: connect button -> "Wallet connected ✓" */}
+                {/* Action slot — appears after decode completes */}
                 <motion.div
-                  variants={fade}
-                  custom={reduceMotion ? 0 : 1.35}
-                  initial="hidden"
-                  animate="show"
-                  className="mt-16 w-full"
+                  initial={reduceMotion ? false : { opacity: 0, y: 16 }}
+                  animate={
+                    entryReady
+                      ? { opacity: 1, y: 0 }
+                      : { opacity: 0, y: 16 }
+                  }
+                  transition={{ duration: 0.55, ease }}
+                  className={`mt-16 w-full ${entryReady ? "" : "pointer-events-none"}`}
                 >
                   <AnimatePresence mode="wait" initial={false}>
                     {step === "confirm" ? (
@@ -167,8 +201,9 @@ export default function LandingPage() {
                       >
                         <button
                           type="button"
+                          disabled={!entryReady}
                           onClick={() => openAppKit("Connect")}
-                          className="group inline-flex items-center gap-2 rounded-full border border-ink-200 bg-white px-7 py-3 text-sm font-medium text-ink-800 shadow-[0_1px_2px_rgba(15,18,24,0.06)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#001623] hover:bg-[#001623] hover:text-white hover:shadow-glow-sm dark:border-white/15 dark:bg-white/[0.03] dark:text-white/80 dark:shadow-none dark:backdrop-blur-sm dark:hover:border-[#001623] dark:hover:bg-[#001623] dark:hover:text-white"
+                          className="group inline-flex items-center gap-2 rounded-full border border-ink-200 bg-white px-7 py-3 text-sm font-medium text-ink-800 shadow-[0_1px_2px_rgba(15,18,24,0.06)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[#001623] hover:bg-[#001623] hover:text-white hover:shadow-glow-sm disabled:cursor-default disabled:opacity-0 dark:border-white/15 dark:bg-white/[0.03] dark:text-white/80 dark:shadow-none dark:backdrop-blur-sm dark:hover:border-[#001623] dark:hover:bg-[#001623] dark:hover:text-white"
                         >
                           <span className="h-1.5 w-1.5 rounded-full bg-accent-500 shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
                           Connect wallet to enter
@@ -196,6 +231,34 @@ const LOAD_STAGGER_MS = 90; // extra cipher time per character index
 const GLYPH_INTERVAL_MS = 72; // cadence of glyph swaps (higher = slower/smoother)
 const SETTLE_GLYPHS = 3; // glyph swaps after the cursor leaves, before locking
 
+// Hero entry sequence (runs on every page load / refresh).
+const HERO_ENTER_MS = 900; // fade + rise duration for hero block
+const HERO_STAGGER_S = 0.13; // stagger between wordmark / tagline / powered-by
+const HERO_EASE = [0.16, 1, 0.3, 1] as const;
+const DECODE_TOTAL_MS =
+  LOAD_BASE_MS + (WORDMARK.length - 1) * LOAD_STAGGER_MS + 700;
+
+type EntryPhase = "idle" | "enter" | "decode" | "ready";
+
+const heroContainerVariants: Variants = {
+  hidden: { opacity: 0 },
+  enter: {
+    opacity: 1,
+    transition: { staggerChildren: HERO_STAGGER_S, delayChildren: 0.06 },
+  },
+  visible: { opacity: 1 },
+};
+
+const heroItemVariants: Variants = {
+  hidden: { opacity: 0, y: 30 },
+  enter: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: HERO_ENTER_MS / 1000, ease: HERO_EASE },
+  },
+  visible: { opacity: 1, y: 0 },
+};
+
 function randomGlyph() {
   return SCRAMBLE_CHARS[Math.floor(Math.random() * SCRAMBLE_CHARS.length)];
 }
@@ -211,10 +274,14 @@ function DecodeChar({
   target,
   index,
   reduceMotion,
+  decodeActive,
+  interactionsEnabled,
 }: {
   target: string;
   index: number;
   reduceMotion: boolean;
+  decodeActive: boolean;
+  interactionsEnabled: boolean;
 }) {
   const isStar = target === "*";
   const isDot = target === ".";
@@ -246,20 +313,20 @@ function DecodeChar({
   }, [reduceMotion, animatable, target, stopLoop]);
 
   const onEnter = () => {
-    if (!animatable) return;
+    if (!animatable || !interactionsEnabled) return;
     hoveredRef.current = true;
     settleRef.current = 0;
     startLoop();
   };
   const onLeave = () => {
-    if (!animatable) return;
+    if (!animatable || !interactionsEnabled) return;
     hoveredRef.current = false;
     settleRef.current = SETTLE_GLYPHS;
   };
 
-  // One-time staggered decode on first load (letters only).
+  // Staggered decode — starts only after the hero entrance settles.
   useEffect(() => {
-    if (reduceMotion || !animatable) return;
+    if (!decodeActive || reduceMotion || !animatable) return;
     setGlyph(randomGlyph());
     hoveredRef.current = true;
     startLoop();
@@ -279,7 +346,15 @@ function DecodeChar({
       clearTimeout(release);
       clearTimeout(hardStop);
     };
-  }, [reduceMotion, animatable, index, target, startLoop, stopLoop]);
+  }, [
+    decodeActive,
+    reduceMotion,
+    animatable,
+    index,
+    target,
+    startLoop,
+    stopLoop,
+  ]);
 
   useEffect(() => () => stopLoop(), [stopLoop]);
 
@@ -316,24 +391,34 @@ function DecodeChar({
       onMouseLeave={onLeave}
       onFocus={onEnter}
       onBlur={onLeave}
-      tabIndex={0}
+      tabIndex={interactionsEnabled ? 0 : -1}
       aria-hidden="true"
-      className="inline-block w-[0.66em] cursor-default text-center text-ink-900 outline-none transition-colors duration-500 dark:text-white"
+      className={`inline-block w-[0.66em] text-center text-ink-900 outline-none transition-colors duration-500 dark:text-white ${
+        interactionsEnabled
+          ? "cursor-default"
+          : "pointer-events-none cursor-default"
+      }`}
     >
       {glyph}
     </span>
   );
 }
 
-function Wordmark({ reduceMotion }: { reduceMotion: boolean }) {
+function Wordmark({
+  reduceMotion,
+  decodeActive,
+  interactionsEnabled,
+}: {
+  reduceMotion: boolean;
+  decodeActive: boolean;
+  interactionsEnabled: boolean;
+}) {
   const bracket =
     "select-none font-light leading-none text-ink-300/80 dark:text-white/20 text-[0.5em]";
 
   return (
     <motion.div
-      initial={reduceMotion ? false : { opacity: 0, scale: 0.985 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
+      variants={heroItemVariants}
       role="img"
       aria-label="Trst.it"
       className="flex cursor-default select-none items-center justify-center gap-[0.22em] text-[clamp(2.6rem,9vw,7rem)] font-semibold leading-none"
@@ -349,6 +434,8 @@ function Wordmark({ reduceMotion }: { reduceMotion: boolean }) {
             target={char}
             index={i}
             reduceMotion={reduceMotion}
+            decodeActive={decodeActive}
+            interactionsEnabled={interactionsEnabled}
           />
         ))}
       </span>
@@ -367,16 +454,26 @@ function Wordmark({ reduceMotion }: { reduceMotion: boolean }) {
 function LandingHeader({
   address,
   isConnected,
+  entryReady,
+  reduceMotion,
 }: {
   address?: `0x${string}`;
   isConnected: boolean;
+  entryReady: boolean;
+  reduceMotion: boolean;
 }) {
   return (
     <motion.header
-      initial={{ opacity: 0, y: -12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-      className="flex items-center justify-between px-6 py-6 sm:px-10"
+      initial={reduceMotion ? false : { opacity: 0, y: -10 }}
+      animate={
+        entryReady || reduceMotion
+          ? { opacity: 1, y: 0 }
+          : { opacity: 0, y: -10 }
+      }
+      transition={{ duration: 0.65, ease: HERO_EASE }}
+      className={`flex items-center justify-between px-6 py-6 sm:px-10 ${
+        entryReady ? "" : "pointer-events-none"
+      }`}
     >
       <Link
         href="/"

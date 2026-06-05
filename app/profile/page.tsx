@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   useAccount,
   useChainId,
@@ -11,33 +12,102 @@ import {
 } from "wagmi";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Container, PageHeading } from "@/components/ui/container";
-import { Card, CardBody, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Spinner } from "@/components/ui/spinner";
+import { Input } from "@/components/ui/input";
 import { RoleGuard } from "@/components/role-guard";
 import { useEip1193Provider } from "@/lib/use-eip1193";
-import { encryptProfile } from "@/lib/fhe";
+import { encryptProfile, ensureFheReady } from "@/lib/fhe";
 import { submitProfileOnChain, isContractConfigured } from "@/lib/contract";
-import {
-  ACTIVE_CHAIN,
-  CREDIT_MAX,
-  CREDIT_MIN,
-  EMPLOYMENT_MAX_MONTHS,
-  SALARY_MAX,
-} from "@/lib/constants";
+import { ACTIVE_CHAIN, CREDIT_MIN, SALARY_MAX } from "@/lib/constants";
+
+type Currency = "INR" | "USD";
+type Step =
+  | "intro"
+  | "salary"
+  | "credit"
+  | "employment"
+  | "review"
+  | "encrypting"
+  | "success";
+
+type EncryptField = "salary" | "credit" | "employment";
+
+type EncryptPhase =
+  | "preparing"
+  | "wallet_wait"
+  | "encrypting"
+  | "creating"
+  | "finalizing";
+
+type ProfileError = { title: string; message: string };
+
+type EncryptUI = {
+  phase: EncryptPhase;
+  activeField: EncryptField | null;
+  completed: Record<EncryptField, boolean>;
+};
+
+const ENCRYPT_FIELDS: EncryptField[] = ["salary", "credit", "employment"];
+
+const FIELD_LABELS: Record<EncryptField, string> = {
+  salary: "Salary",
+  credit: "Credit Score",
+  employment: "Employment Duration",
+};
+
+const FIELD_STEP_MS = 520;
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function completedUpTo(count: number): Record<EncryptField, boolean> {
+  return {
+    salary: count > 0,
+    credit: count > 1,
+    employment: count > 2,
+  };
+}
+
+const CREDIT_WIZARD_MAX = 900;
+const EMPLOYMENT_OPTIONS = [
+  { label: "Less than 6 months", months: 3 },
+  { label: "6–12 months", months: 9 },
+  { label: "1–2 years", months: 18 },
+  { label: "2–5 years", months: 42 },
+  { label: "5+ years", months: 72 },
+] as const;
+
+const ease = [0.16, 1, 0.3, 1] as const;
 
 export default function ProfilePage() {
   return (
     <RoleGuard role="tenant">
-      <ProfileEditor />
+      <ProfileWizard />
     </RoleGuard>
   );
 }
 
-function ProfileEditor() {
+function detectCurrency(): Currency {
+  if (typeof navigator === "undefined") return "INR";
+  const locale = navigator.language?.toLowerCase() ?? "";
+  if (locale.includes("in") || locale.endsWith("-in")) return "INR";
+  if (locale.includes("us") || locale === "en-us") return "USD";
+  return "INR";
+}
+
+function formatSalaryDisplay(amount: string, currency: Currency) {
+  const n = Number(amount);
+  if (!Number.isFinite(n)) return "—";
+  const formatted = n.toLocaleString(
+    currency === "INR" ? "en-IN" : "en-US",
+    { maximumFractionDigits: 0 }
+  );
+  return currency === "INR" ? `₹${formatted}` : `$${formatted}`;
+}
+
+function ProfileWizard() {
   const router = useRouter();
   const { address } = useAccount();
   const walletProvider = useEip1193Provider();
@@ -51,296 +121,913 @@ function ProfileEditor() {
     api.profiles.get,
     address ? { walletAddress: address.toLowerCase() } : "skip"
   );
-
   const upsert = useMutation(api.profiles.upsert);
-
-  const [salary, setSalary] = useState("");
-  const [credit, setCredit] = useState("");
-  const [employment, setEmployment] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [step, setStep] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const hasExisting = existing !== undefined && existing !== null;
 
-  const errors = validate({ salary, credit, employment });
+  const [step, setStep] = useState<Step>("intro");
+  const [currency, setCurrency] = useState<Currency>("INR");
+  const [salary, setSalary] = useState("");
+  const [credit, setCredit] = useState("");
+  const [employmentMonths, setEmploymentMonths] = useState<number | null>(null);
+  const [employmentLabel, setEmploymentLabel] = useState("");
+  const [error, setError] = useState<ProfileError | null>(null);
+  const [encryptUI, setEncryptUI] = useState<EncryptUI>({
+    phase: "preparing",
+    activeField: null,
+    completed: { salary: false, credit: false, employment: false },
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    setCurrency(detectCurrency());
+  }, []);
+
+  const salaryError = validateSalary(salary);
+  const creditError = validateCredit(credit);
+
+  const handleEncrypt = async () => {
     if (!address || !walletProvider || !publicClient || !walletClient) return;
-    if (Object.values(errors).some(Boolean)) return;
+    if (employmentMonths === null) return;
 
-    setBusy(true);
+    setStep("encrypting");
     setError(null);
-    setStep("Initializing CoFHE…");
+    setEncryptUI({
+      phase: "preparing",
+      activeField: null,
+      completed: { salary: false, credit: false, employment: false },
+    });
+
+    const flow = { walletHold: false };
+
+    const runSequentialEncryptUI = async () => {
+      for (let i = 0; i < ENCRYPT_FIELDS.length; i++) {
+        while (flow.walletHold) await sleep(150);
+
+        setEncryptUI({
+          phase: "encrypting",
+          activeField: ENCRYPT_FIELDS[i],
+          completed: completedUpTo(i),
+        });
+        await sleep(FIELD_STEP_MS);
+
+        while (flow.walletHold) await sleep(150);
+
+        setEncryptUI({
+          phase: "encrypting",
+          activeField:
+            i + 1 < ENCRYPT_FIELDS.length ? ENCRYPT_FIELDS[i + 1] : null,
+          completed: completedUpTo(i + 1),
+        });
+      }
+    };
 
     try {
-      const encrypted = await encryptProfile({
-        publicClient,
-        walletClient,
-        address,
-        salary: Number(salary),
-        creditScore: Number(credit),
-        employmentMonths: Number(employment),
-        onState: (s) => setStep(`Encrypting: ${s}`),
+      await ensureFheReady({ publicClient, walletClient, address });
+
+      setEncryptUI({
+        phase: "encrypting",
+        activeField: "salary",
+        completed: completedUpTo(0),
+      });
+
+      const encrypted = await Promise.all([
+        encryptProfile({
+          publicClient,
+          walletClient,
+          address,
+          salary: Number(salary),
+          creditScore: Number(credit),
+          employmentMonths,
+          onWalletRequest: () => {
+            flow.walletHold = true;
+            setEncryptUI((u) => ({
+              ...u,
+              phase: "wallet_wait",
+              activeField: null,
+            }));
+          },
+          onEncryptProgress: () => {
+            flow.walletHold = false;
+            setEncryptUI((u) =>
+              u.phase === "wallet_wait" ? { ...u, phase: "encrypting" } : u
+            );
+          },
+        }),
+        runSequentialEncryptUI(),
+      ]).then(([result]) => result);
+
+      flow.walletHold = false;
+      setEncryptUI({
+        phase: "encrypting",
+        activeField: null,
+        completed: { salary: true, credit: true, employment: true },
       });
 
       let txHash: string | undefined;
       if (isContractConfigured()) {
-        setStep("Submitting encrypted profile on-chain…");
         const tx = await submitProfileOnChain({
           walletProvider,
           salaryCt: encrypted.salaryCt,
           creditCt: encrypted.creditCt,
           employmentCt: encrypted.employmentCt,
+          onTxRequested: () => {
+            flow.walletHold = true;
+            setEncryptUI((u) => ({
+              ...u,
+              phase: "wallet_wait",
+              activeField: null,
+            }));
+          },
         });
         txHash = tx.txHash;
+        flow.walletHold = false;
       }
 
-      setStep("Saving profile…");
+      setEncryptUI({
+        phase: "creating",
+        activeField: null,
+        completed: { salary: true, credit: true, employment: true },
+      });
+
       await upsert({
         walletAddress: address.toLowerCase(),
         encSalary: encrypted.serialized.salary,
         encCreditScore: encrypted.serialized.credit,
         encEmploymentMonths: encrypted.serialized.employment,
+        salaryCurrency: currency,
         onChainTxHash: txHash,
       });
 
-      router.push("/dashboard");
+      setEncryptUI({
+        phase: "finalizing",
+        activeField: null,
+        completed: { salary: true, credit: true, employment: true },
+      });
+      await sleep(750);
+      setStep("success");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Profile submission failed.");
-    } finally {
-      setBusy(false);
-      setStep(null);
+      setError(mapProfileError(e));
+      setStep("review");
     }
   };
 
+  if (existing === undefined) {
+    return (
+      <Container className="py-16">
+        <div className="mx-auto max-w-lg animate-pulse space-y-4">
+          <div className="h-8 w-2/3 rounded bg-ink-100 dark:bg-white/10" />
+          <div className="h-4 w-full rounded bg-ink-50 dark:bg-white/[0.06]" />
+        </div>
+      </Container>
+    );
+  }
+
   return (
-    <Container className="py-10">
-      <PageHeading
-        eyebrow={hasExisting ? "Edit profile" : "Create profile"}
-        title="Your encrypted profile"
-        description="Salary, credit, and employment are encrypted on your device with Fhenix CoFHE before they ever leave it. Submit once — reuse it everywhere."
-      />
+    <Container className="py-10 sm:py-14">
+      <div className="mx-auto max-w-lg">
+        {step === "salary" || step === "credit" || step === "employment" ? (
+          <StepIndicator step={step} />
+        ) : null}
 
-      <div className="grid lg:grid-cols-[1fr_320px] gap-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Financial profile</CardTitle>
-            <CardDescription>
-              These values are encrypted client-side. Trst.it and any landlord
-              you share with will never see them.
-            </CardDescription>
-          </CardHeader>
-          <form onSubmit={handleSubmit}>
-            <CardBody className="space-y-5">
-              <Input
-                label="Monthly gross income"
-                name="salary"
-                type="number"
-                inputMode="decimal"
-                placeholder="6500"
-                prefix="$"
-                suffix="/mo"
-                value={salary}
-                onChange={(e) => setSalary(e.target.value)}
-                error={errors.salary}
-                hint="Used to check the landlord's rent-to-income multiplier."
-                disabled={busy}
+        <AnimatePresence mode="wait">
+          {step === "intro" && (
+            <WizardScreen key="intro">
+              <IntroStep
+                isUpdate={hasExisting}
+                onStart={() => setStep("salary")}
               />
-              <Input
-                label="Credit score"
-                name="credit"
-                type="number"
-                inputMode="numeric"
-                placeholder="720"
-                value={credit}
-                onChange={(e) => setCredit(e.target.value)}
-                error={errors.credit}
-                hint={`Between ${CREDIT_MIN} and ${CREDIT_MAX}.`}
-                disabled={busy}
-              />
-              <Input
-                label="Months at current employer"
-                name="employment"
-                type="number"
-                inputMode="numeric"
-                placeholder="24"
-                suffix="months"
-                value={employment}
-                onChange={(e) => setEmployment(e.target.value)}
-                error={errors.employment}
-                hint="Continuous employment with the same employer."
-                disabled={busy}
-              />
+            </WizardScreen>
+          )}
 
-              {error ? (
-                <div className="rounded-md bg-danger-50 border border-danger-500/30 p-3 text-xs text-danger-700">
-                  {error}
-                </div>
-              ) : null}
+          {step === "salary" && (
+            <WizardScreen key="salary">
+              <SalaryStep
+                salary={salary}
+                currency={currency}
+                error={salaryError}
+                onSalaryChange={setSalary}
+                onCurrencyChange={setCurrency}
+                onBack={() => setStep("intro")}
+                onContinue={() => setStep("credit")}
+                canContinue={!!salary && !salaryError}
+              />
+            </WizardScreen>
+          )}
 
-              {onWrongChain ? (
-                <div className="rounded-md bg-warn-50 border border-warn-500/30 p-3 text-xs text-warn-700 flex items-center justify-between gap-3">
-                  <span>
-                    Your wallet is on chain id {connectedChainId}. Switch to{" "}
-                    {ACTIVE_CHAIN.name} ({ACTIVE_CHAIN.id}) to encrypt and
-                    submit on-chain.
-                  </span>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    loading={switching}
-                    onClick={() => switchChain({ chainId: ACTIVE_CHAIN.id })}
-                  >
-                    Switch network
-                  </Button>
-                </div>
-              ) : null}
-            </CardBody>
-            <CardFooter className="flex items-center justify-between">
-              <div className="text-xs text-ink-500 flex items-center gap-2 min-h-[20px]">
-                {busy ? (
-                  <>
-                    <Spinner />
-                    <span>{step ?? "Working…"}</span>
-                  </>
-                ) : hasExisting ? (
-                  <>Last updated {new Date(existing.updatedAt).toLocaleDateString()}</>
-                ) : null}
-              </div>
-              <Button
-                type="submit"
-                loading={busy}
-                disabled={
-                  !walletProvider ||
-                  !publicClient ||
-                  !walletClient ||
-                  onWrongChain ||
-                  Object.values(errors).some(Boolean) ||
-                  !salary ||
-                  !credit ||
-                  !employment
+          {step === "credit" && (
+            <WizardScreen key="credit">
+              <CreditStep
+                credit={credit}
+                error={creditError}
+                onCreditChange={setCredit}
+                onBack={() => setStep("salary")}
+                onContinue={() => setStep("employment")}
+                canContinue={!!credit && !creditError}
+              />
+            </WizardScreen>
+          )}
+
+          {step === "employment" && (
+            <WizardScreen key="employment">
+              <EmploymentStep
+                selectedMonths={employmentMonths}
+                onSelect={(months, label) => {
+                  setEmploymentMonths(months);
+                  setEmploymentLabel(label);
+                }}
+                onBack={() => setStep("credit")}
+                onContinue={() => setStep("review")}
+                canContinue={employmentMonths !== null}
+              />
+            </WizardScreen>
+          )}
+
+          {step === "review" && (
+            <WizardScreen key="review">
+              <ReviewStep
+                salary={salary}
+                currency={currency}
+                credit={credit}
+                employmentLabel={employmentLabel}
+                error={error}
+                onWrongChain={onWrongChain}
+                switching={switching}
+                onSwitchChain={() => switchChain({ chainId: ACTIVE_CHAIN.id })}
+                onBack={() => setStep("employment")}
+                onEncrypt={handleEncrypt}
+                canEncrypt={
+                  !!walletProvider &&
+                  !!publicClient &&
+                  !!walletClient &&
+                  !onWrongChain
                 }
-                title={disabledReason({
-                  walletProvider,
-                  publicClient,
-                  walletClient,
-                  onWrongChain,
-                  errors,
-                  salary,
-                  credit,
-                  employment,
-                })}
-              >
-                {hasExisting ? "Update encrypted profile" : "Encrypt and save"}
-              </Button>
-            </CardFooter>
-          </form>
-        </Card>
+              />
+            </WizardScreen>
+          )}
 
-        <aside className="space-y-4">
-          <Card>
-            <CardBody>
-              <Badge tone="brand" className="mb-2">
-                What gets shared
-              </Badge>
-              <ul className="space-y-3 text-sm text-ink-700">
-                <li className="flex gap-2">
-                  <span className="text-ink-300">—</span>
-                  <span>
-                    <strong className="text-ink-900">Landlord sees:</strong>{" "}
-                    pass / fail per requirement and a final eligibility verdict.
-                  </span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-ink-300">—</span>
-                  <span>
-                    <strong className="text-ink-900">Landlord never sees:</strong>{" "}
-                    your salary, credit score, or employment duration.
-                  </span>
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-ink-300">—</span>
-                  <span>
-                    <strong className="text-ink-900">Trst.it never sees:</strong>{" "}
-                    plaintext of any of your values.
-                  </span>
-                </li>
-              </ul>
-            </CardBody>
-          </Card>
+          {step === "encrypting" && (
+            <WizardScreen key="encrypting">
+              <EncryptingStep ui={encryptUI} />
+            </WizardScreen>
+          )}
 
-          {!isContractConfigured() ? (
-            <Card>
-              <CardBody>
-                <Badge tone="warn" className="mb-2">
-                  Setup required
-                </Badge>
-                <p className="text-sm text-ink-700">
-                  No CoFHE contract address is configured. Encryption will
-                  still happen locally, but the encrypted profile won&apos;t be
-                  stored on-chain until you set{" "}
-                  <code className="text-xs">
-                    NEXT_PUBLIC_TRSTIT_CONTRACT_ADDRESS
-                  </code>
-                  .
-                </p>
-              </CardBody>
-            </Card>
-          ) : null}
-        </aside>
+          {step === "success" && (
+            <WizardScreen key="success">
+              <SuccessStep onDashboard={() => router.push("/dashboard")} />
+            </WizardScreen>
+          )}
+        </AnimatePresence>
       </div>
     </Container>
   );
 }
 
-function disabledReason(args: {
-  walletProvider: unknown;
-  publicClient: unknown;
-  walletClient: unknown;
-  onWrongChain: boolean;
-  errors: { salary?: string; credit?: string; employment?: string };
+function WizardScreen({ children }: { children: React.ReactNode }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -12 }}
+      transition={{ duration: 0.45, ease }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+function StepIndicator({ step }: { step: "salary" | "credit" | "employment" }) {
+  const n = step === "salary" ? 1 : step === "credit" ? 2 : 3;
+  return (
+    <p className="mb-6 text-center text-xs font-medium uppercase tracking-[0.18em] text-ink-400 dark:text-white/40">
+      Step {n} of 3
+    </p>
+  );
+}
+
+function IntroStep({
+  isUpdate,
+  onStart,
+}: {
+  isUpdate: boolean;
+  onStart: () => void;
+}) {
+  return (
+    <div className="text-center">
+      <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full border border-accent-400/30 bg-accent-400/10 dark:border-accent-400/25 dark:bg-accent-400/[0.08]">
+        <LockIcon className="h-6 w-6 text-accent-600 dark:text-accent-300" />
+      </div>
+      <h1 className="text-2xl font-semibold tracking-tight text-ink-900 dark:text-white sm:text-3xl">
+        {isUpdate ? "Update Your Encrypted Profile" : "Create Your Encrypted Profile"}
+      </h1>
+      <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-ink-600 dark:text-white/60">
+        Verify eligibility without revealing sensitive information.
+      </p>
+      <p className="mx-auto mt-6 max-w-sm text-xs leading-relaxed text-ink-500 dark:text-white/45">
+        Your profile will be encrypted using Fhenix coFHE. Only verification
+        results are shared. Never raw values.
+      </p>
+      <div className="mt-10">
+        <Button size="lg" onClick={onStart}>
+          Get Started
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function SalaryStep({
+  salary,
+  currency,
+  error,
+  onSalaryChange,
+  onCurrencyChange,
+  onBack,
+  onContinue,
+  canContinue,
+}: {
   salary: string;
+  currency: Currency;
+  error?: string;
+  onSalaryChange: (v: string) => void;
+  onCurrencyChange: (v: Currency) => void;
+  onBack: () => void;
+  onContinue: () => void;
+  canContinue: boolean;
+}) {
+  return (
+    <div>
+      <h1 className="text-2xl font-semibold tracking-tight text-ink-900 dark:text-white">
+        Salary
+      </h1>
+      <p className="mt-2 text-sm text-ink-600 dark:text-white/60">
+        Used to verify income requirements without revealing your actual salary.
+      </p>
+
+      <div className="mt-8">
+        <label className="block text-sm font-medium text-ink-700 mb-1.5 dark:text-white/70">
+          Monthly Income
+        </label>
+        <div className="flex gap-2">
+          <select
+            value={currency}
+            onChange={(e) => onCurrencyChange(e.target.value as Currency)}
+            className="h-[42px] rounded-md border border-ink-200 bg-white px-3 text-sm text-ink-900 focus:outline-none focus:ring-2 focus:ring-brand-500/40 dark:border-white/12 dark:bg-white/[0.04] dark:text-white dark:focus:ring-accent-400/30"
+            aria-label="Currency"
+          >
+            <option value="INR">INR ₹</option>
+            <option value="USD">USD $</option>
+          </select>
+          <div className="flex flex-1 items-center rounded-md border border-ink-200 bg-white focus-within:ring-2 focus-within:ring-brand-500/40 dark:border-white/12 dark:bg-white/[0.04] dark:focus-within:ring-accent-400/30">
+            <span className="pl-3 text-sm text-ink-400 dark:text-white/40">
+              {currency === "INR" ? "₹" : "$"}
+            </span>
+            <input
+              type="number"
+              inputMode="decimal"
+              placeholder={currency === "INR" ? "50,000" : "5,000"}
+              value={salary}
+              onChange={(e) => onSalaryChange(e.target.value)}
+              className="flex-1 bg-transparent px-2 py-2.5 text-sm text-ink-900 placeholder:text-ink-400 focus:outline-none dark:text-white dark:placeholder:text-white/35"
+            />
+          </div>
+        </div>
+        {error ? (
+          <p className="mt-1.5 text-xs text-danger-700 dark:text-danger-500">
+            {error}
+          </p>
+        ) : (
+          <p className="mt-1.5 text-xs text-ink-500 dark:text-white/45">
+            Your salary remains encrypted.
+          </p>
+        )}
+      </div>
+
+      <WizardNav onBack={onBack} onContinue={onContinue} canContinue={canContinue} />
+    </div>
+  );
+}
+
+function CreditStep({
+  credit,
+  error,
+  onCreditChange,
+  onBack,
+  onContinue,
+  canContinue,
+}: {
   credit: string;
-  employment: string;
-}): string | undefined {
-  if (!args.walletProvider) return "Connect your wallet to continue.";
-  if (!args.publicClient) return "Loading network client…";
-  if (args.onWrongChain) return `Switch to ${ACTIVE_CHAIN.name} first.`;
-  if (!args.walletClient) return "Loading wallet client…";
-  if (!args.salary || !args.credit || !args.employment)
-    return "Fill in all three fields.";
-  if (Object.values(args.errors).some(Boolean))
-    return "Fix the highlighted fields.";
+  error?: string;
+  onCreditChange: (v: string) => void;
+  onBack: () => void;
+  onContinue: () => void;
+  canContinue: boolean;
+}) {
+  return (
+    <div>
+      <h1 className="text-2xl font-semibold tracking-tight text-ink-900 dark:text-white">
+        Credit Score
+      </h1>
+      <p className="mt-2 text-sm text-ink-600 dark:text-white/60">
+        Used for encrypted threshold checks.
+      </p>
+      <p className="mt-1 text-xs text-ink-400 dark:text-white/40">Example: 650+</p>
+
+      <div className="mt-8">
+        <Input
+          label="Credit Score"
+          name="credit"
+          type="number"
+          inputMode="numeric"
+          placeholder="720"
+          value={credit}
+          onChange={(e) => onCreditChange(e.target.value)}
+          error={error}
+          hint="Your credit score remains encrypted."
+        />
+      </div>
+
+      <WizardNav onBack={onBack} onContinue={onContinue} canContinue={canContinue} />
+    </div>
+  );
+}
+
+function EmploymentStep({
+  selectedMonths,
+  onSelect,
+  onBack,
+  onContinue,
+  canContinue,
+}: {
+  selectedMonths: number | null;
+  onSelect: (months: number, label: string) => void;
+  onBack: () => void;
+  onContinue: () => void;
+  canContinue: boolean;
+}) {
+  return (
+    <div>
+      <h1 className="text-2xl font-semibold tracking-tight text-ink-900 dark:text-white">
+        Employment Duration
+      </h1>
+      <p className="mt-2 text-sm text-ink-600 dark:text-white/60">
+        Used to verify employment stability.
+      </p>
+
+      <div className="mt-8 space-y-2">
+        {EMPLOYMENT_OPTIONS.map((opt) => {
+          const selected = selectedMonths === opt.months;
+          return (
+            <button
+              key={opt.label}
+              type="button"
+              onClick={() => onSelect(opt.months, opt.label)}
+              className={`w-full rounded-xl border px-4 py-3.5 text-left text-sm transition-all duration-200 ${
+                selected
+                  ? "border-accent-400/50 bg-accent-400/10 font-medium text-brand-700 dark:border-accent-400/40 dark:bg-accent-400/[0.08] dark:text-accent-100"
+                  : "border-ink-200 bg-white text-ink-800 hover:border-ink-300 dark:border-white/12 dark:bg-white/[0.03] dark:text-white/85 dark:hover:border-white/20"
+              }`}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <WizardNav onBack={onBack} onContinue={onContinue} canContinue={canContinue} />
+    </div>
+  );
+}
+
+function ReviewStep({
+  salary,
+  currency,
+  credit,
+  employmentLabel,
+  error,
+  onWrongChain,
+  switching,
+  onSwitchChain,
+  onBack,
+  onEncrypt,
+  canEncrypt,
+}: {
+  salary: string;
+  currency: Currency;
+  credit: string;
+  employmentLabel: string;
+  error: ProfileError | null;
+  onWrongChain: boolean;
+  switching: boolean;
+  onSwitchChain: () => void;
+  onBack: () => void;
+  onEncrypt: () => void;
+  canEncrypt: boolean;
+}) {
+  return (
+    <div>
+      <h1 className="text-2xl font-semibold tracking-tight text-ink-900 dark:text-white">
+        Ready to Encrypt
+      </h1>
+
+      <ul className="mt-8 space-y-3">
+        <ReviewRow label="Salary" value={formatSalaryDisplay(salary, currency)} />
+        <ReviewRow label="Credit Score" value={credit} />
+        <ReviewRow label="Employment Duration" value={employmentLabel} />
+      </ul>
+
+      <p className="mt-8 text-xs leading-relaxed text-ink-500 dark:text-white/45">
+        This information will be encrypted using Fhenix coFHE before storage.
+        Only pass/fail verification results will ever be revealed.
+      </p>
+
+      {error ? (
+        <div className="mt-4 rounded-md border border-danger-500/30 bg-danger-50 p-3 dark:bg-danger-500/10">
+          <p className="text-sm font-medium text-danger-700 dark:text-danger-500">
+            {error.title}
+          </p>
+          <p className="mt-1 text-xs text-danger-600 dark:text-danger-500/90">
+            {error.message}
+          </p>
+        </div>
+      ) : null}
+
+      {onWrongChain ? (
+        <div className="mt-4 rounded-md border border-warn-500/30 bg-warn-50 p-3 text-xs text-warn-700 flex items-center justify-between gap-3 dark:bg-warn-500/10 dark:text-warn-500">
+          <span>
+            Switch to {ACTIVE_CHAIN.name} to encrypt and submit on-chain.
+          </span>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            loading={switching}
+            onClick={onSwitchChain}
+          >
+            Switch network
+          </Button>
+        </div>
+      ) : null}
+
+      <div className="mt-10 flex items-center justify-between gap-4">
+        <Button type="button" variant="ghost" onClick={onBack}>
+          Back
+        </Button>
+        <Button
+          type="button"
+          size="lg"
+          onClick={onEncrypt}
+          disabled={!canEncrypt}
+        >
+          Encrypt &amp; Create Profile
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ReviewRow({ label, value }: { label: string; value: string }) {
+  return (
+    <li className="flex items-center justify-between gap-4 text-sm">
+      <span className="flex items-center gap-2 text-ink-700 dark:text-white/70">
+        <span className="text-accent-600 dark:text-accent-300" aria-hidden="true">
+          ✓
+        </span>
+        {label}
+      </span>
+      <span className="font-medium text-ink-900 dark:text-white">{value}</span>
+    </li>
+  );
+}
+
+function AnimatedEllipsis({
+  text,
+  className,
+}: {
+  text: string;
+  className?: string;
+}) {
+  const [dots, setDots] = useState(1);
+
+  useEffect(() => {
+    const id = setInterval(() => setDots((d) => (d % 3) + 1), 480);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <span className={className}>
+      {text}
+      {".".repeat(dots)}
+    </span>
+  );
+}
+
+function PulsingDots() {
+  return (
+    <div className="flex items-center justify-center gap-2">
+      {[0, 1, 2].map((i) => (
+        <motion.span
+          key={i}
+          className="h-2 w-2 rounded-full bg-accent-400"
+          animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.15, 0.8] }}
+          transition={{
+            duration: 1.4,
+            repeat: Infinity,
+            delay: i * 0.22,
+            ease: "easeInOut",
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function BreathingRing() {
+  return (
+    <motion.div
+      className="mx-auto h-14 w-14 rounded-full border-2 border-accent-400/50"
+      animate={{ scale: [1, 1.08, 1], opacity: [0.55, 1, 0.55] }}
+      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+    />
+  );
+}
+
+function SpinIndicator() {
+  return (
+    <motion.span
+      className="inline-block text-base leading-none text-accent-600 dark:text-accent-300"
+      animate={{ rotate: 360 }}
+      transition={{ duration: 0.9, repeat: Infinity, ease: "linear" }}
+      aria-hidden="true"
+    >
+      ⟳
+    </motion.span>
+  );
+}
+
+function EncryptFieldList({ ui }: { ui: EncryptUI }) {
+  return (
+    <ul className="mx-auto mt-10 max-w-xs space-y-3 text-left">
+      {ENCRYPT_FIELDS.map((field) => {
+        const done = ui.completed[field];
+        const active = ui.activeField === field;
+        return (
+          <motion.li
+            key={field}
+            layout
+            className={`flex items-center justify-between text-sm ${
+              done
+                ? "text-ink-700 dark:text-white/70"
+                : active
+                  ? "font-medium text-brand-700 dark:text-accent-100"
+                  : "text-ink-400 dark:text-white/30"
+            }`}
+          >
+            <span>{FIELD_LABELS[field]}</span>
+            <span className="w-5 text-center text-accent-600 dark:text-accent-300">
+              {done ? (
+                <motion.span
+                  initial={{ opacity: 0, scale: 0.6 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3, ease }}
+                >
+                  ✓
+                </motion.span>
+              ) : active ? (
+                <SpinIndicator />
+              ) : (
+                <span className="text-ink-300 dark:text-white/20">○</span>
+              )}
+            </span>
+          </motion.li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function EncryptingStep({ ui }: { ui: EncryptUI }) {
+  if (ui.phase === "preparing") {
+    return (
+      <div className="text-center">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink-900 dark:text-white">
+          <AnimatedEllipsis text="Preparing Secure Session" />
+        </h1>
+        <p className="mt-3 text-sm text-ink-500 dark:text-white/45">
+          Initializing encrypted connection
+        </p>
+        <div className="mx-auto mt-8 h-1 w-28 overflow-hidden rounded-full bg-ink-100 dark:bg-white/10">
+          <motion.div
+            className="h-full w-1/2 rounded-full bg-accent-400/60"
+            animate={{ x: ["-100%", "200%"] }}
+            transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (ui.phase === "wallet_wait") {
+    return (
+      <div className="text-center">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink-900 dark:text-white">
+          Waiting For Wallet Approval
+        </h1>
+        <p className="mx-auto mt-4 flex items-center justify-center gap-1 text-sm text-ink-600 dark:text-white/60">
+          <span>Check your wallet</span>
+          <motion.span
+            animate={{ x: [0, 4, 0] }}
+            transition={{ duration: 1.1, repeat: Infinity, ease: "easeInOut" }}
+            aria-hidden="true"
+          >
+            →
+          </motion.span>
+        </p>
+        <div className="mx-auto mt-10 space-y-6">
+          <BreathingRing />
+          <PulsingDots />
+        </div>
+      </div>
+    );
+  }
+
+  if (ui.phase === "creating") {
+    return (
+      <div className="text-center">
+        <h1 className="text-2xl font-semibold tracking-tight text-ink-900 dark:text-white">
+          <AnimatedEllipsis text="Creating Encrypted Profile" />
+        </h1>
+        <p className="mt-3 text-sm text-ink-500 dark:text-white/45">
+          Securing your profile
+        </p>
+        <div className="mx-auto mt-8 flex justify-center">
+          <motion.div
+            className="h-8 w-8 rounded-full border-2 border-accent-400/30 border-t-accent-400"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (ui.phase === "finalizing") {
+    return (
+      <motion.div
+        className="text-center"
+        animate={{ opacity: [0.92, 1, 0.92] }}
+        transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+      >
+        <EncryptFieldList ui={ui} />
+      </motion.div>
+    );
+  }
+
+  return (
+    <div className="text-center">
+      <h1 className="text-2xl font-semibold tracking-tight text-ink-900 dark:text-white">
+        <AnimatedEllipsis text="Encrypting Profile" />
+      </h1>
+      <EncryptFieldList ui={ui} />
+    </div>
+  );
+}
+
+function mapProfileError(err: unknown): ProfileError {
+  const raw =
+    err instanceof Error
+      ? err.message
+      : typeof err === "object" && err && "message" in err
+        ? String((err as { message: unknown }).message)
+        : String(err);
+  const lower = raw.toLowerCase();
+
+  if (
+    lower.includes("user rejected") ||
+    lower.includes("user denied") ||
+    lower.includes("rejected the request") ||
+    lower.includes("action_rejected") ||
+    lower.includes("cancelled") ||
+    lower.includes("canceled")
+  ) {
+    return {
+      title: "Wallet Rejected",
+      message: "Transaction approval was cancelled.",
+    };
+  }
+
+  if (
+    lower.includes("network") ||
+    lower.includes("fetch failed") ||
+    lower.includes("timeout") ||
+    lower.includes("econnrefused") ||
+    lower.includes("failed to fetch")
+  ) {
+    return {
+      title: "Network Error",
+      message: "Unable to connect to the network.",
+    };
+  }
+
+  if (lower.includes("encrypt")) {
+    return {
+      title: "Encryption Failed",
+      message: "Your profile could not be encrypted.",
+    };
+  }
+
+  return {
+    title: "Unknown Error",
+    message: "Something went wrong. Please try again.",
+  };
+}
+
+function SuccessStep({ onDashboard }: { onDashboard: () => void }) {
+  return (
+    <div className="text-center">
+      <motion.div
+        className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-accent-500 text-night-950 shadow-[0_0_24px_rgba(34,211,238,0.45)]"
+        initial={{ scale: 0.6, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.45, ease }}
+      >
+        <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" aria-hidden="true">
+          <path
+            d="M5 12.5l4.5 4.5L19 7"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </motion.div>
+      <motion.h1
+        className="text-2xl font-semibold tracking-tight text-ink-900 dark:text-white"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.15, ease }}
+      >
+        Profile Created ✓
+      </motion.h1>
+      <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-ink-600 dark:text-white/60">
+        Your encrypted profile is now ready. You can now verify eligibility
+        against landlord requirements without revealing your data.
+      </p>
+      <div className="mt-10">
+        <Button size="lg" onClick={onDashboard}>
+          Go To Dashboard
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function WizardNav({
+  onBack,
+  onContinue,
+  canContinue,
+}: {
+  onBack: () => void;
+  onContinue: () => void;
+  canContinue: boolean;
+}) {
+  return (
+    <div className="mt-10 flex items-center justify-between gap-4">
+      <Button type="button" variant="ghost" onClick={onBack}>
+        Back
+      </Button>
+      <Button type="button" onClick={onContinue} disabled={!canContinue}>
+        Continue
+      </Button>
+    </div>
+  );
+}
+
+function validateSalary(salary: string): string | undefined {
+  if (!salary) return undefined;
+  const n = Number(salary);
+  if (!Number.isFinite(n) || n <= 0) return "Must be a positive number.";
+  if (n > SALARY_MAX) return "That's unusually high — check the value.";
   return undefined;
 }
 
-function validate({
-  salary,
-  credit,
-  employment,
-}: {
-  salary: string;
-  credit: string;
-  employment: string;
-}) {
-  const errors: { salary?: string; credit?: string; employment?: string } = {};
-  if (salary !== "") {
-    const n = Number(salary);
-    if (!Number.isFinite(n) || n < 0) errors.salary = "Must be a positive number.";
-    else if (n > SALARY_MAX) errors.salary = "That's unusually high — check the value.";
-  }
-  if (credit !== "") {
-    const n = Number(credit);
-    if (!Number.isFinite(n) || n < CREDIT_MIN || n > CREDIT_MAX)
-      errors.credit = `Must be ${CREDIT_MIN}..${CREDIT_MAX}.`;
-  }
-  if (employment !== "") {
-    const n = Number(employment);
-    if (!Number.isFinite(n) || n < 0 || n > EMPLOYMENT_MAX_MONTHS)
-      errors.employment = `Must be 0..${EMPLOYMENT_MAX_MONTHS} months.`;
-  }
-  return errors;
+function validateCredit(credit: string): string | undefined {
+  if (!credit) return undefined;
+  const n = Number(credit);
+  if (!Number.isFinite(n) || n < CREDIT_MIN || n > CREDIT_WIZARD_MAX)
+    return `Must be ${CREDIT_MIN}–${CREDIT_WIZARD_MAX}.`;
+  return undefined;
+}
+
+function LockIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" strokeWidth="1.8" />
+      <path
+        d="M8 11V8a4 4 0 1 1 8 0v3"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
 }
