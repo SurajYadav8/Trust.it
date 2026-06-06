@@ -1,0 +1,170 @@
+version: "2"
+type: frontend
+tech_stack:
+  - TypeScript
+  - Next.js 14 App Router
+  - React 18
+  - Tailwind CSS
+  - Convex
+  - wagmi + Reown AppKit
+  - Fhenix CoFHE
+routes:
+  - path: /
+    file: app/page.tsx
+    auth_required: false
+    description: Landing page with wallet connect and role selection
+  - path: /onboarding
+    file: app/onboarding/page.tsx
+    auth_required: true
+    description: First-time wallet role selection (tenant or landlord, permanent)
+  - path: /dashboard
+    file: app/dashboard/page.tsx
+    auth_required: true
+    description: Tenant dashboard with verification history and profile status
+  - path: /profile
+    file: app/profile/page.tsx
+    auth_required: true
+    description: Tenant encrypted profile creation wizard
+  - path: /landlord
+    file: app/landlord/page.tsx
+    auth_required: true
+    description: Landlord dashboard with onboarding or stats overview
+  - path: /landlord/properties
+    file: app/landlord/properties/page.tsx
+    auth_required: true
+    description: Landlord property screening list
+  - path: /landlord/results
+    file: app/landlord/results/page.tsx
+    auth_required: true
+    description: Cross-property applicant results table
+  - path: /landlord/requests/new
+    file: app/landlord/requests/new/page.tsx
+    auth_required: true
+    description: Create property screening form
+  - path: /landlord/requests/[requestId]
+    file: app/landlord/requests/[requestId]/page.tsx
+    auth_required: true
+    description: Single property screening detail with applicants
+  - path: /verify
+    file: app/verify/page.tsx
+    auth_required: false
+    description: Verification link paste fallback
+  - path: /verify/[shareSlug]
+    file: app/verify/[shareSlug]/page.tsx
+    auth_required: true
+    description: Tenant runs encrypted verification against landlord requirements
+  - path: /results/[resultId]
+    file: app/results/[resultId]/page.tsx
+    auth_required: false
+    description: Shared pass/fail verification result page
+features:
+  - name: Wallet Connect and Role Onboarding
+    description: User connects Web3 wallet and selects permanent tenant or landlord role
+    files:
+      - app/page.tsx
+      - app/onboarding/page.tsx
+      - components/wallet-connect.tsx
+      - lib/wallet.ts
+    entry_route: /
+    user_interactions:
+      - Click Connect wallet button
+      - Approve connection in wallet extension
+      - Select Tenant or Landlord role on onboarding
+      - Confirm role selection
+    api_calls:
+      - method: QUERY
+        endpoint: convex users.get
+      - method: MUTATION
+        endpoint: convex users.register
+    auth_required: false
+  - name: Tenant Encrypted Profile
+    description: Tenant creates reusable encrypted salary, credit, and employment profile
+    files:
+      - app/profile/page.tsx
+      - lib/fhe.ts
+      - convex/profiles.ts
+    entry_route: /profile
+    user_interactions:
+      - Enter salary with INR or USD currency
+      - Enter credit score
+      - Select employment duration range
+      - Review and submit encrypted profile
+    api_calls:
+      - method: MUTATION
+        endpoint: convex profiles.upsert
+    auth_required: true
+  - name: Landlord Create Property Screening
+    description: Landlord defines property and screening requirements
+    files:
+      - app/landlord/requests/new/page.tsx
+      - convex/requests.ts
+    entry_route: /landlord/requests/new
+    user_interactions:
+      - Fill property name and optional label
+      - Set monthly rent with INR or USD
+      - Set income multiple, credit score, employment duration
+      - Click Create screening
+    api_calls:
+      - method: MUTATION
+        endpoint: convex requests.create
+    auth_required: true
+  - name: Landlord Dashboard and Properties
+    description: Landlord views stats, property cards, and copy verification links
+    files:
+      - app/landlord/page.tsx
+      - app/landlord/properties/page.tsx
+      - components/landlord/shared.tsx
+    entry_route: /landlord
+    user_interactions:
+      - Navigate Dashboard, Properties, Results tabs
+      - View property screening cards
+      - Copy verification link
+      - Open property detail
+    api_calls:
+      - method: QUERY
+        endpoint: convex requests.listForLandlord
+    auth_required: true
+  - name: Tenant Verification Flow
+    description: Tenant opens share link and runs encrypted eligibility check
+    files:
+      - app/verify/[shareSlug]/page.tsx
+      - lib/contract.ts
+      - convex/results.ts
+    entry_route: /verify/[shareSlug]
+    user_interactions:
+      - Review landlord requirements
+      - Click Run verification
+      - Approve wallet transaction
+      - View redirect to result page
+    api_calls:
+      - method: QUERY
+        endpoint: convex requests.getBySlug
+      - method: MUTATION
+        endpoint: convex results.record
+    auth_required: true
+  - name: Verification Results
+    description: Tenant and landlord view pass/fail outcomes without raw financial data
+    files:
+      - app/results/[resultId]/page.tsx
+      - app/landlord/results/page.tsx
+    entry_route: /results/[resultId]
+    user_interactions:
+      - View overall eligible or not eligible verdict
+      - Expand details section
+      - Navigate back to dashboard or property
+    api_calls:
+      - method: QUERY
+        endpoint: convex results.get
+      - method: QUERY
+        endpoint: convex results.listForRequest
+    auth_required: false
+known_limitations:
+  - issue: Full FHE verification requires deployed contract and testnet wallet with funds
+    location: lib/contract.ts
+    impact: End-to-end verify flow may fail in test env without contract address
+  - issue: Wallet connection requires browser extension (MetaMask, Rabby, etc.)
+    location: components/wallet-connect.tsx
+    impact: Automated tests need wallet mock or manual approval step
+  - issue: Role is permanent per wallet; switching roles requires different wallet
+    location: convex/users.ts
+    impact: Tests must use separate wallets for tenant vs landlord flows

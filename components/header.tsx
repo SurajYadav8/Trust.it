@@ -32,8 +32,25 @@ export function Header() {
       { href: "/profile", label: "Profile", active: pathname.startsWith("/profile") }
     );
   } else if (role === "landlord") {
+    const onProperties =
+      pathname.startsWith("/landlord/properties") ||
+      pathname.startsWith("/landlord/requests");
     links.push(
-      { href: "/landlord", label: "Requests", active: pathname.startsWith("/landlord") }
+      {
+        href: "/landlord",
+        label: "Dashboard",
+        active: pathname === "/landlord",
+      },
+      {
+        href: "/landlord/properties",
+        label: "Properties",
+        active: onProperties,
+      },
+      {
+        href: "/landlord/results",
+        label: "Results",
+        active: pathname.startsWith("/landlord/results"),
+      }
     );
   }
 

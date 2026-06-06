@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "next lint",
     "convex:dev": "convex dev",
-    "convex:deploy": "convex deploy"
+    "convex:deploy": "convex deploy",
+    "dev:e2e": "node scripts/dev-e2e.mjs",
+    "seed:e2e": "npx convex run seed:seedE2EFixtures",
+    "test:e2e": "python testsprite_tests/run_all_e2e.py"
   },
   "dependencies": {
     "@cofhe/sdk": "^0.6.0",

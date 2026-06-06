@@ -12,21 +12,10 @@ import {
 import { useAccount } from "wagmi";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { initAppKit } from "@/lib/wallet";
+import { openAppKit } from "@/lib/wallet";
 import { formatAddress } from "@/lib/format";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Spinner } from "@/components/ui/spinner";
-
-function openAppKit(view: "Connect" | "Account") {
-  if (typeof window === "undefined") return;
-  const kit = initAppKit();
-  if (!kit) return;
-  void (
-    kit as unknown as {
-      open: (opts?: { view?: string }) => Promise<unknown>;
-    }
-  ).open({ view });
-}
 
 const WORDMARK = ["T", "r", "*", "s", "t", ".", "i", "t"];
 // Letters + numbers + symbols for the decode cipher (no </>{}[] to avoid

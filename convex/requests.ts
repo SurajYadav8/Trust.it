@@ -7,6 +7,9 @@ export const create = mutation({
     title: v.string(),
     propertyLabel: v.optional(v.string()),
     monthlyRent: v.number(),
+    rentCurrency: v.optional(
+      v.union(v.literal("INR"), v.literal("USD"))
+    ),
     salaryMultiplier: v.number(),
     minCreditScore: v.number(),
     minEmploymentMonths: v.number(),
@@ -38,6 +41,7 @@ export const create = mutation({
       title: args.title,
       propertyLabel: args.propertyLabel,
       monthlyRent: args.monthlyRent,
+      rentCurrency: args.rentCurrency,
       salaryMultiplier: args.salaryMultiplier,
       minCreditScore: args.minCreditScore,
       minEmploymentMonths: args.minEmploymentMonths,

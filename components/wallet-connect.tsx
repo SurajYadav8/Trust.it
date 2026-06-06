@@ -4,15 +4,14 @@ import { useState } from "react";
 import { useAccount, useDisconnect } from "wagmi";
 import { Button } from "@/components/ui/button";
 import { formatAddress } from "@/lib/format";
-import { initAppKit } from "@/lib/wallet";
+import { isE2EMode, type E2ERole } from "@/lib/e2e";
+import { openAppKit } from "@/lib/wallet";
 
-function openAppKit(view: "Connect" | "Account") {
-  if (typeof window === "undefined") return;
-  const kit = initAppKit();
-  if (!kit) return;
-  void (kit as unknown as {
-    open: (opts?: { view?: string }) => Promise<unknown>;
-  }).open({ view });
+function detectE2ERole(): E2ERole {
+  if (typeof window !== "undefined" && window.location.pathname.startsWith("/landlord")) {
+    return "landlord";
+  }
+  return "tenant";
 }
 
 export function WalletConnectButton({
@@ -65,7 +64,9 @@ export function WalletConnectButton({
     <Button
       variant="primary"
       size={size}
-      onClick={() => openAppKit("Connect")}
+      onClick={() =>
+        openAppKit("Connect", isE2EMode() ? detectE2ERole() : undefined)
+      }
     >
       Connect wallet
     </Button>

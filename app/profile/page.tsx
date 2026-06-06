@@ -20,6 +20,7 @@ import { useEip1193Provider } from "@/lib/use-eip1193";
 import { encryptProfile, ensureFheReady } from "@/lib/fhe";
 import { submitProfileOnChain, isContractConfigured } from "@/lib/contract";
 import { ACTIVE_CHAIN, CREDIT_MIN, SALARY_MAX } from "@/lib/constants";
+import { TENANT_EMPLOYMENT_OPTIONS } from "@/lib/employment-duration";
 
 type Currency = "INR" | "USD";
 type Step =
@@ -71,13 +72,6 @@ function completedUpTo(count: number): Record<EncryptField, boolean> {
 }
 
 const CREDIT_WIZARD_MAX = 900;
-const EMPLOYMENT_OPTIONS = [
-  { label: "Less than 6 months", months: 3 },
-  { label: "6–12 months", months: 9 },
-  { label: "1–2 years", months: 18 },
-  { label: "2–5 years", months: 42 },
-  { label: "5+ years", months: 72 },
-] as const;
 
 const ease = [0.16, 1, 0.3, 1] as const;
 
@@ -574,7 +568,7 @@ function EmploymentStep({
       </p>
 
       <div className="mt-8 space-y-2">
-        {EMPLOYMENT_OPTIONS.map((opt) => {
+        {TENANT_EMPLOYMENT_OPTIONS.map((opt) => {
           const selected = selectedMonths === opt.months;
           return (
             <button

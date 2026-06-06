@@ -3,13 +3,24 @@ export function formatAddress(address: string | undefined | null): string {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
 
-export function formatMoney(value: number | bigint): string {
+export type Currency = "INR" | "USD";
+
+export function formatMoney(
+  value: number | bigint,
+  currency: Currency = "USD"
+): string {
   const n = typeof value === "bigint" ? Number(value) : value;
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat(currency === "INR" ? "en-IN" : "en-US", {
     style: "currency",
-    currency: "USD",
+    currency,
     maximumFractionDigits: 0,
   }).format(n);
+}
+
+export function rentCurrency(
+  request: { rentCurrency?: Currency } | null | undefined
+): Currency {
+  return request?.rentCurrency ?? "USD";
 }
 
 export function formatMonths(months: number): string {

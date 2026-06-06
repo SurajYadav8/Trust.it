@@ -14,6 +14,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ApplicantStatusBadge } from "@/components/landlord/shared";
 import { Button } from "@/components/ui/button";
 import { CopyButton } from "@/components/copy-button";
 import { EmptyState } from "@/components/ui/empty";
@@ -22,8 +23,16 @@ import {
   formatAddress,
   formatDate,
   formatMoney,
-  formatMonths,
+  rentCurrency,
 } from "@/lib/format";
+import { formatEmploymentRequirement } from "@/lib/employment-duration";
+import { propertyDisplayInfo } from "@/lib/property-display";
+import { propertyShareUrl } from "@/lib/landlord-property";
+import {
+  METRIC_CELL_CLASS,
+  PRIMARY_CARD_CLASS,
+  SECONDARY_CARD_CLASS,
+} from "@/lib/ui-classes";
 
 export default function RequestDetailPage() {
   return (
@@ -53,26 +62,25 @@ function RequestDetail() {
   if (request === null) {
     return (
       <Container className="py-10">
-        <EmptyState title="Request not found" />
+        <EmptyState title="Property not found" />
       </Container>
     );
   }
 
-  const shareUrl =
-    typeof window !== "undefined"
-      ? `${window.location.origin}/verify/${request.shareSlug}`
-      : `/verify/${request.shareSlug}`;
+  const { name, identifier } = propertyDisplayInfo(request, "Property");
+  const shareUrl = propertyShareUrl(request.shareSlug);
+  const currency = rentCurrency(request);
 
   return (
     <Container className="py-10">
       <PageHeading
-        eyebrow="Verification request"
-        title={request.title}
-        description={request.propertyLabel}
+        eyebrow="Property"
+        title={name}
+        description={identifier ?? undefined}
         action={
-          <Link href="/landlord">
+          <Link href="/landlord/properties">
             <Button variant="ghost" size="sm">
-              ← All requests
+              ← Properties
             </Button>
           </Link>
         }
@@ -80,7 +88,7 @@ function RequestDetail() {
 
       <div className="grid lg:grid-cols-[1fr_320px] gap-8 items-start">
         <div className="space-y-6">
-          <Card>
+          <Card className={SECONDARY_CARD_CLASS}>
             <CardHeader>
               <CardTitle>Requirements</CardTitle>
               <CardDescription>
@@ -92,10 +100,12 @@ function RequestDetail() {
               <ThresholdCell
                 label="Income"
                 value={`≥ ${formatMoney(
-                  request.monthlyRent * request.salaryMultiplier
+                  request.monthlyRent * request.salaryMultiplier,
+                  currency
                 )}/mo`}
                 hint={`${request.salaryMultiplier}× rent of ${formatMoney(
-                  request.monthlyRent
+                  request.monthlyRent,
+                  currency
                 )}`}
               />
               <ThresholdCell
@@ -104,12 +114,12 @@ function RequestDetail() {
               />
               <ThresholdCell
                 label="Employment"
-                value={`≥ ${formatMonths(request.minEmploymentMonths)}`}
+                value={formatEmploymentRequirement(request.minEmploymentMonths)}
               />
             </CardBody>
           </Card>
 
-          <Card>
+          <Card className={PRIMARY_CARD_CLASS}>
             <CardHeader className="flex items-center justify-between">
               <div>
                 <CardTitle>Results</CardTitle>
@@ -148,9 +158,7 @@ function RequestDetail() {
                         <PassPill ok={r.passSalary} label="Income" />
                         <PassPill ok={r.passCredit} label="Credit" />
                         <PassPill ok={r.passEmployment} label="Tenure" />
-                        <Badge tone={r.overallEligible ? "success" : "danger"}>
-                          {r.overallEligible ? "Eligible" : "Not eligible"}
-                        </Badge>
+                        <ApplicantStatusBadge eligible={r.overallEligible} />
                         <Link href={`/results/${r._id}`}>
                           <Button size="sm" variant="secondary">
                             View
@@ -166,7 +174,7 @@ function RequestDetail() {
         </div>
 
         <aside className="space-y-4">
-          <Card>
+          <Card className={PRIMARY_CARD_CLASS}>
             <CardHeader>
               <CardTitle>Share link</CardTitle>
               <CardDescription>
@@ -174,7 +182,7 @@ function RequestDetail() {
               </CardDescription>
             </CardHeader>
             <CardBody>
-              <div className="rounded-md bg-ink-50 border border-ink-100 p-3 text-xs font-mono text-ink-700 break-all">
+              <div className="rounded-md border border-accent-400/15 bg-ink-50/80 p-3 text-xs font-mono text-ink-700 break-all dark:border-accent-400/10 dark:bg-white/[0.03] dark:text-white/75">
                 {shareUrl}
               </div>
               <div className="mt-3">
@@ -182,8 +190,8 @@ function RequestDetail() {
               </div>
             </CardBody>
           </Card>
-          <Card>
-            <CardBody className="text-xs text-ink-600">
+          <Card className={SECONDARY_CARD_CLASS}>
+            <CardBody className="text-xs text-ink-600 dark:text-white/50">
               Created {formatDate(request.createdAt)}.
             </CardBody>
           </Card>
@@ -203,12 +211,18 @@ function ThresholdCell({
   hint?: string;
 }) {
   return (
-    <div className="rounded-md border border-ink-100 bg-ink-50/50 p-4">
-      <div className="text-xs text-ink-500 uppercase tracking-wider">
+    <div className={METRIC_CELL_CLASS}>
+      <div className="text-xs uppercase tracking-wider text-ink-500 dark:text-white/45">
         {label}
       </div>
-      <div className="text-base font-semibold text-ink-900 mt-1">{value}</div>
-      {hint ? <div className="text-xs text-ink-500 mt-1">{hint}</div> : null}
+      <div className="mt-1 text-base font-semibold text-ink-900 dark:text-white">
+        {value}
+      </div>
+      {hint ? (
+        <div className="mt-1 text-xs text-ink-500 dark:text-white/45">
+          {hint}
+        </div>
+      ) : null}
     </div>
   );
 }

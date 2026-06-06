@@ -14,3 +14,5 @@ contracts/artifacts
 contracts/cache
 contracts/dist
 contracts/.env
+
+testsprite_tests\tmp\config.json

@@ -4,9 +4,11 @@ import { BrowserProvider, Contract, type Eip1193Provider } from "ethers";
 import type { PublicClient, WalletClient } from "viem";
 import abi from "@/contracts/TrstItVerifier.abi.json";
 import { CONTRACT_ADDRESS } from "./constants";
+import { isE2EMode } from "./e2e";
 import { decryptBool } from "./fhe";
 
 export function isContractConfigured(): boolean {
+  if (isE2EMode()) return true;
   return /^0x[a-fA-F0-9]{40}$/.test(CONTRACT_ADDRESS);
 }
 
@@ -28,6 +30,10 @@ export async function submitProfileOnChain(params: {
   employmentCt: unknown;
   onTxRequested?: () => void;
 }): Promise<{ txHash: string }> {
+  if (isE2EMode()) {
+    params.onTxRequested?.();
+    return { txHash: `0x${"ab".repeat(32)}` };
+  }
   const contract = await getContract(params.walletProvider);
   params.onTxRequested?.();
   const tx = await contract.submitProfile(
@@ -66,6 +72,20 @@ export async function runVerification(params: {
   minEmploymentMonths: number;
   onProgress?: (msg: string) => void;
 }): Promise<VerificationReadout & { verificationId: bigint; txHash: string }> {
+  if (isE2EMode()) {
+    params.onProgress?.("E2E: simulated verification");
+    return {
+      verificationId: 1n,
+      txHash: `0x${"ab".repeat(32)}`,
+      tenant: params.address,
+      ready: true,
+      passSalary: true,
+      passCredit: true,
+      passEmployment: true,
+      overallEligible: true,
+    };
+  }
+
   const contract = await getContract(params.walletProvider);
 
   const minSalary = BigInt(

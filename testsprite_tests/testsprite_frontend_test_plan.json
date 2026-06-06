@@ -1,0 +1,902 @@
+[
+  {
+    "id": "TC001",
+    "title": "Connect wallet and choose tenant role",
+    "description": "Verifies a new user can connect a wallet, choose the tenant role, and reach the tenant onboarding outcome for that wallet.",
+    "category": "Wallet Connect and Role Onboarding",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the wallet connect control"
+      },
+      {
+        "type": "action",
+        "description": "Approve the wallet connection"
+      },
+      {
+        "type": "action",
+        "description": "Select the tenant role"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the role selection"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the tenant dashboard or onboarding outcome is shown for the connected wallet"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC002",
+    "title": "Tenant runs a private verification from a shared link",
+    "description": "A tenant can open a share link, review the requirements, run verification, and arrive at a shared result page with an eligibility outcome.",
+    "category": "Tenant Verification Flow",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to a tenant share verification link"
+      },
+      {
+        "type": "action",
+        "description": "Review the landlord requirements"
+      },
+      {
+        "type": "action",
+        "description": "Run the verification"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the verification result page is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an eligibility outcome is visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Connect wallet and choose landlord role",
+    "description": "Verifies a new user can connect a wallet, choose the landlord role, and reach the landlord onboarding outcome for that wallet.",
+    "category": "Wallet Connect and Role Onboarding",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the wallet connect control"
+      },
+      {
+        "type": "action",
+        "description": "Approve the wallet connection"
+      },
+      {
+        "type": "action",
+        "description": "Select the landlord role"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the role selection"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the landlord dashboard or onboarding outcome is shown for the connected wallet"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "Unauthenticated user is prevented from opening tenant profile and verification routes",
+    "description": "An unauthenticated user is redirected away from protected tenant routes and is prompted to authenticate.",
+    "category": "Tenant Verification Flow",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /profile"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the login page is displayed"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to a tenant share verification link"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access to the verification flow is blocked"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "Unauthenticated user is prevented from opening protected landlord routes",
+    "description": "An unauthenticated user is redirected away from protected landlord pages and is prompted to authenticate.",
+    "category": "Landlord Dashboard and Properties",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /landlord"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the login page is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access to the landlord area is blocked"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "Open the shared verification result page",
+    "description": "Verifies an anonymous viewer can open a shared verification result and see the overall pass or fail outcome with requirement indicators only.",
+    "category": "Tenant Encrypted Profile",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to a shared verification result page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the overall pass or fail result is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify requirement indicators are visible without raw salary, credit, or employment details"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC007",
+    "title": "Tenant reaches the dashboard after role onboarding",
+    "description": "A tenant can connect a wallet, choose the tenant role, and land on the tenant dashboard.",
+    "category": "Tenant Verification Flow",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Connect the wallet"
+      },
+      {
+        "type": "action",
+        "description": "Go to the onboarding flow"
+      },
+      {
+        "type": "action",
+        "description": "Select the tenant role"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the tenant dashboard is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify tenant navigation is available"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC008",
+    "title": "Return to the same wallet with the assigned role",
+    "description": "Verifies a wallet that has already chosen a role is recognized on future visits and remains locked to that role.",
+    "category": "Wallet Connect and Role Onboarding",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the wallet connect control"
+      },
+      {
+        "type": "action",
+        "description": "Approve the wallet connection"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the previously assigned role outcome is shown for the connected wallet"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC009",
+    "title": "Landlord reaches the dashboard after role onboarding",
+    "description": "A landlord can connect a wallet, choose the landlord role, and land on the landlord dashboard with access to landlord navigation.",
+    "category": "Landlord Dashboard and Properties",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Connect the wallet"
+      },
+      {
+        "type": "action",
+        "description": "Go to the onboarding flow"
+      },
+      {
+        "type": "action",
+        "description": "Select the landlord role"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the landlord dashboard is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify landlord navigation is available"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC010",
+    "title": "Anonymous viewer inspects a shared verification result",
+    "description": "An anonymous viewer can open a shared result page and inspect the overall verdict with requirement indicators but no raw private data.",
+    "category": "Verification Results",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to a shared verification result link"
+      },
+      {
+        "type": "action",
+        "description": "Expand the details section"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the overall verdict is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify requirement indicators are visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC011",
+    "title": "Create a property screening request successfully",
+    "description": "Verifies a landlord can create a screening request with rent and requirement criteria and see the new request details afterward.",
+    "category": "Landlord Create Property Screening",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /landlord/requests/new"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the property name"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the optional label"
+      },
+      {
+        "type": "action",
+        "description": "Set the monthly rent with a valid currency and amount"
+      },
+      {
+        "type": "action",
+        "description": "Set a valid income multiple"
+      },
+      {
+        "type": "action",
+        "description": "Set a valid minimum credit score"
+      },
+      {
+        "type": "action",
+        "description": "Set a valid minimum employment duration"
+      },
+      {
+        "type": "action",
+        "description": "Create the screening request"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new screening request details are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a shareable verification link is visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC012",
+    "title": "Landlord creates a new property screening request",
+    "description": "A landlord can create a new screening request and see it added to their landlord property workflow.",
+    "category": "Landlord Dashboard and Properties",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /landlord/requests/new"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the property screening details"
+      },
+      {
+        "type": "action",
+        "description": "Submit the screening request form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new screening request is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the request is available in the landlord workflow"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC013",
+    "title": "Create a tenant profile successfully",
+    "description": "Verifies a tenant can save an encrypted profile with salary, credit score, and employment duration and see it saved successfully.",
+    "category": "Tenant Encrypted Profile",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /profile"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the monthly salary field with a valid amount and currency"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the credit score field with a valid score"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid employment duration range"
+      },
+      {
+        "type": "action",
+        "description": "Review the entered profile details"
+      },
+      {
+        "type": "action",
+        "description": "Submit the encrypted profile"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a saved profile confirmation is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the profile status shows the tenant profile is available"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC014",
+    "title": "Tenant creates an encrypted profile",
+    "description": "A tenant can complete the profile flow and see their encrypted profile status reflected in the app.",
+    "category": "Tenant Verification Flow",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /profile"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the profile fields with valid tenant information"
+      },
+      {
+        "type": "action",
+        "description": "Submit the profile form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the profile is saved"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the profile status is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC015",
+    "title": "Landlord reviews property screening cards",
+    "description": "A landlord can open the properties view and see screening cards for their properties.",
+    "category": "Landlord Dashboard and Properties",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /landlord"
+      },
+      {
+        "type": "action",
+        "description": "Open the properties view"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify property screening cards are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify each property card shows screening context"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC016",
+    "title": "Update an existing tenant profile",
+    "description": "Verifies a tenant can change profile details and save the updated encrypted profile so the new information replaces the previous one.",
+    "category": "Tenant Encrypted Profile",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /profile"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the monthly salary field with a new valid amount and currency"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the credit score field with a new valid score"
+      },
+      {
+        "type": "action",
+        "description": "Select a different valid employment duration range"
+      },
+      {
+        "type": "action",
+        "description": "Review the updated profile details"
+      },
+      {
+        "type": "action",
+        "description": "Submit the encrypted profile"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a saved profile confirmation is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated profile status is shown"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC017",
+    "title": "Landlord copies a verification link from a property",
+    "description": "A landlord can open a property detail view and copy the verification link for sharing with a tenant.",
+    "category": "Landlord Dashboard and Properties",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /landlord/properties"
+      },
+      {
+        "type": "action",
+        "description": "Open a property detail page"
+      },
+      {
+        "type": "action",
+        "description": "Copy the verification link"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a copy confirmation is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the property detail context remains visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC018",
+    "title": "Show the created screening in the landlord property list",
+    "description": "Verifies a newly created screening appears in the landlord properties list so the landlord can manage it later.",
+    "category": "Landlord Create Property Screening",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /landlord/requests/new"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the property name"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the optional label"
+      },
+      {
+        "type": "action",
+        "description": "Set the monthly rent with a valid currency and amount"
+      },
+      {
+        "type": "action",
+        "description": "Set a valid income multiple"
+      },
+      {
+        "type": "action",
+        "description": "Set a valid minimum credit score"
+      },
+      {
+        "type": "action",
+        "description": "Set a valid minimum employment duration"
+      },
+      {
+        "type": "action",
+        "description": "Create the screening request"
+      },
+      {
+        "type": "action",
+        "description": "Open the landlord properties list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new screening appears in the property list"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC019",
+    "title": "Tenant updates an existing encrypted profile",
+    "description": "A tenant can edit an existing profile and see the updated profile state reflected afterward.",
+    "category": "Tenant Verification Flow",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /profile"
+      },
+      {
+        "type": "action",
+        "description": "Change an existing profile field to a valid new value"
+      },
+      {
+        "type": "action",
+        "description": "Save the profile changes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated profile is saved"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated profile status is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC020",
+    "title": "Landlord reviews a shared result from the results page",
+    "description": "A landlord can open a shared verification result from the results page and confirm only pass or fail style outcome information is shown.",
+    "category": "Verification Results",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /landlord/results"
+      },
+      {
+        "type": "action",
+        "description": "Open a shared verification result"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the overall verdict is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify requirement indicators are visible"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC021",
+    "title": "Landlord opens cross-property applicant results",
+    "description": "A landlord can browse the cross-property results table and open an applicant outcome for review.",
+    "category": "Landlord Dashboard and Properties",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /landlord/results"
+      },
+      {
+        "type": "action",
+        "description": "Open an applicant result entry"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the applicant result details are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the verification outcome is visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC022",
+    "title": "Tenant reviews verification history and opens a past result",
+    "description": "A tenant can view verification history on the dashboard and open a previous result for details.",
+    "category": "Verification Results",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /dashboard"
+      },
+      {
+        "type": "action",
+        "description": "Open a previous verification result"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the verification outcome is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the result details are displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC023",
+    "title": "Reject invalid tenant profile values",
+    "description": "Verifies the tenant profile form blocks submission when salary, credit score, or employment duration inputs are outside valid ranges.",
+    "category": "Tenant Encrypted Profile",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /profile"
+      },
+      {
+        "type": "action",
+        "description": "Fill in an invalid salary value and currency"
+      },
+      {
+        "type": "action",
+        "description": "Fill in an invalid credit score"
+      },
+      {
+        "type": "action",
+        "description": "Select an invalid employment duration range"
+      },
+      {
+        "type": "action",
+        "description": "Submit the encrypted profile"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify validation errors are visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the profile is not saved"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC024",
+    "title": "Reject invalid landlord screening values",
+    "description": "Verifies the landlord screening form shows validation errors when rent or requirement inputs are outside valid ranges.",
+    "category": "Landlord Create Property Screening",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /landlord/requests/new"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the property name"
+      },
+      {
+        "type": "action",
+        "description": "Fill in an invalid rent value and currency"
+      },
+      {
+        "type": "action",
+        "description": "Set an invalid income multiple"
+      },
+      {
+        "type": "action",
+        "description": "Set an invalid minimum credit score"
+      },
+      {
+        "type": "action",
+        "description": "Set an invalid minimum employment duration"
+      },
+      {
+        "type": "action",
+        "description": "Create the screening request"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify validation errors are visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the request is not created"
+      }
+    ],
+    "priority": "Low"
+  }
+]

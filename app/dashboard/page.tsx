@@ -664,7 +664,7 @@ function verificationSummaryClass(result: VerificationResult): string {
     .filter(Boolean).length;
 
   if (result.overallEligible) {
-    return "text-accent-700 dark:text-accent-200";
+    return "text-brand-700 dark:text-accent-200";
   }
   if (passed > 0) {
     return "text-warn-700 dark:text-warn-500";

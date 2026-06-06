@@ -1,0 +1,19 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:3000",
+  "loginUser": "Test@1",
+  "loginPassword": "123456",
+  "executionArgs": {
+    "projectName": "Trst.it",
+    "projectPath": "e:\\cursor\\Trst.it",
+    "testIds": [],
+    "additionalInstruction": "E2E MODE REQUIRED: start app with `npm run dev:e2e` and seed with `npm run seed:e2e` before tests. Wallet auth uses one-click mock connect (no MetaMask). Demo fixtures: /verify/demo, /verify/abc123, /results/demo. Fresh onboarding wallets via sessionStorage e2eAddress. Landlord nav: Dashboard | Properties | Results. Skip /login — wallet only.",
+    "serverMode": "development",
+    "envs": {
+      "API_KEY": "sk-user-IMnhHGKjVXR_VvgmtyOkVit7k4s_TALizxFieCOwcNzR2OrQEWezMis3Sr8BDOG2zMPt4pjXFRYeAN4hrPxu15EC-nHLdqmBAHRyZ-ZCQWaHShTrWtaXeJuyYr4YMQBXg6k"
+    }
+  },
+  "serverPort": 51320
+}

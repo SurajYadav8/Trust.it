@@ -22,9 +22,15 @@ import {
   formatAddress,
   formatDate,
   formatMoney,
-  formatMonths,
+  rentCurrency,
 } from "@/lib/format";
-import { PRIMARY_CARD_CLASS } from "@/lib/ui-classes";
+import { formatEmploymentRequirement } from "@/lib/employment-duration";
+import {
+  ELIGIBLE_STATUS_CLASS,
+  NOT_ELIGIBLE_STATUS_CLASS,
+  PRIMARY_CARD_CLASS,
+  SECONDARY_CARD_CLASS,
+} from "@/lib/ui-classes";
 
 type RequestInfo = {
   title?: string;
@@ -32,6 +38,7 @@ type RequestInfo = {
   landlordAddress?: string;
   _id?: string;
   monthlyRent?: number;
+  rentCurrency?: "INR" | "USD";
   salaryMultiplier?: number;
   minCreditScore?: number;
   minEmploymentMonths?: number;
@@ -140,6 +147,7 @@ export default function ResultPage() {
   const requiredIncome = request
     ? request.monthlyRent * request.salaryMultiplier
     : 0;
+  const currency = rentCurrency(request);
 
   const { name: propertyName, identifier: propertyIdentifier } =
     propertyDisplayInfo(request);
@@ -160,7 +168,7 @@ export default function ResultPage() {
           ) : role === "landlord" && request ? (
             <Link href={`/landlord/requests/${request._id}`}>
               <Button variant="ghost" size="sm">
-                ← Request
+                ← Property
               </Button>
             </Link>
           ) : null
@@ -186,7 +194,7 @@ export default function ResultPage() {
                 label="Income"
                 threshold={
                   request
-                    ? `≥ ${formatMoney(requiredIncome)}/mo`
+                    ? `≥ ${formatMoney(requiredIncome, currency)}/mo`
                     : "—"
                 }
               />
@@ -200,7 +208,7 @@ export default function ResultPage() {
                 label="Employment"
                 threshold={
                   request
-                    ? `≥ ${formatMonths(request.minEmploymentMonths)}`
+                    ? formatEmploymentRequirement(request.minEmploymentMonths)
                     : "—"
                 }
               />
@@ -236,7 +244,7 @@ export default function ResultPage() {
         </div>
 
         <aside className="space-y-4">
-          <Card>
+          <Card className={SECONDARY_CARD_CLASS}>
             <CardBody className="py-5">
               <Badge
                 tone={
@@ -272,7 +280,7 @@ export default function ResultPage() {
           </Card>
 
           {user?.role === "tenant" && !data.overallEligible ? (
-            <Card>
+            <Card className={SECONDARY_CARD_CLASS}>
               <CardBody className="py-5">
                 <Badge tone="warn" className="mb-3">
                   Tip
@@ -295,9 +303,7 @@ function VerdictBadge({ eligible }: { eligible: boolean }) {
   return (
     <span
       className={`inline-flex shrink-0 items-center rounded-full border px-3 py-1 text-sm font-medium ${
-        eligible
-          ? "border-success-500/30 bg-success-500/[0.08] text-success-700 dark:border-success-500/25 dark:bg-success-500/10 dark:text-success-500"
-          : "border-danger-500/25 bg-danger-500/[0.07] text-danger-700 dark:border-danger-500/20 dark:bg-danger-500/10 dark:text-danger-500"
+        eligible ? ELIGIBLE_STATUS_CLASS : NOT_ELIGIBLE_STATUS_CLASS
       }`}
     >
       {eligible ? "Eligible" : "Not eligible"}
@@ -309,7 +315,7 @@ function DetailsDisclosure({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <Card className="overflow-hidden">
+    <Card className={`overflow-hidden ${SECONDARY_CARD_CLASS}`}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

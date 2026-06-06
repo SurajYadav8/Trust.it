@@ -2,6 +2,7 @@
 
 import type { PublicClient, WalletClient } from "viem";
 import { ACTIVE_CHAIN } from "./constants";
+import { isE2EMode } from "./e2e";
 
 type AnyPublicClient = PublicClient;
 type AnyWalletClient = WalletClient;
@@ -68,6 +69,7 @@ export async function ensureFheReady(params: {
   walletClient: AnyWalletClient;
   address: string;
 }): Promise<void> {
+  if (isE2EMode()) return;
   await ensureConnected(params);
 }
 
@@ -107,6 +109,23 @@ export async function encryptProfile(params: {
   onWalletRequest?: () => void;
   onEncryptProgress?: (index: number, total: number) => void;
 }): Promise<EncryptedProfileInputs> {
+  if (isE2EMode()) {
+    params.onState?.("e2e:encrypt");
+    params.onEncryptProgress?.(0, 3);
+    params.onEncryptProgress?.(1, 3);
+    params.onEncryptProgress?.(2, 3);
+    return {
+      salaryCt: "e2e",
+      creditCt: "e2e",
+      employmentCt: "e2e",
+      serialized: {
+        salary: "e2e:salary",
+        credit: "e2e:credit",
+        employment: "e2e:employment",
+      },
+    };
+  }
+
   const client = (await ensureConnected(params)) as {
     encryptInputs: (
       inputs: unknown[]

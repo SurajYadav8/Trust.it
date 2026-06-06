@@ -3,6 +3,7 @@ import { cn } from "@/lib/format";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
+  labelClassName?: string;
   hint?: string;
   error?: string;
   prefix?: string;
@@ -10,7 +11,17 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { label, hint, error, prefix, suffix, className, id, ...rest },
+  {
+    label,
+    labelClassName,
+    hint,
+    error,
+    prefix,
+    suffix,
+    className,
+    id,
+    ...rest
+  },
   ref
 ) {
   const inputId = id ?? rest.name;
@@ -19,7 +30,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       {label ? (
         <label
           htmlFor={inputId}
-          className="block text-sm font-medium text-ink-700 mb-1.5 dark:text-white/70"
+          className={cn(
+            "mb-1.5 block text-sm font-medium text-ink-700 dark:text-white/70",
+            labelClassName
+          )}
         >
           {label}
         </label>

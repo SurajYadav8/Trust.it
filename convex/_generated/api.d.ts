@@ -11,6 +11,7 @@
 import type * as profiles from "../profiles.js";
 import type * as requests from "../requests.js";
 import type * as results from "../results.js";
+import type * as seed from "../seed.js";
 import type * as users from "../users.js";
 
 import type {
@@ -23,6 +24,7 @@ declare const fullApi: ApiFromModules<{
   profiles: typeof profiles;
   requests: typeof requests;
   results: typeof results;
+  seed: typeof seed;
   users: typeof users;
 }>;
 

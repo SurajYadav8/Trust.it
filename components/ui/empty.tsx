@@ -1,21 +1,25 @@
 import { ReactNode } from "react";
+import { cn } from "@/lib/format";
+import { EMPTY_STATE_CLASS } from "@/lib/ui-classes";
 
 export function EmptyState({
   title,
   description,
   action,
+  className,
 }: {
   title: string;
   description?: string;
   action?: ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="rounded-lg border border-dashed border-ink-200 bg-white px-6 py-12 text-center dark:border-white/12 dark:bg-white/[0.02]">
+    <div className={cn(EMPTY_STATE_CLASS, className)}>
       <h3 className="text-base font-semibold text-ink-900 dark:text-white">
         {title}
       </h3>
       {description ? (
-        <p className="mt-1 text-sm text-ink-500 mx-auto max-w-md dark:text-white/50">
+        <p className="mx-auto mt-1 max-w-md text-sm text-ink-500 dark:text-white/50">
           {description}
         </p>
       ) : null}

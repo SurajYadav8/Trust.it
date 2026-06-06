@@ -26,6 +26,9 @@ export default defineSchema({
     title: v.string(),
     propertyLabel: v.optional(v.string()),
     monthlyRent: v.number(),
+    rentCurrency: v.optional(
+      v.union(v.literal("INR"), v.literal("USD"))
+    ),
     salaryMultiplier: v.number(),
     minCreditScore: v.number(),
     minEmploymentMonths: v.number(),

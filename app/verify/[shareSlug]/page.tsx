@@ -26,8 +26,9 @@ import { ACTIVE_CHAIN } from "@/lib/constants";
 import {
   formatAddress,
   formatMoney,
-  formatMonths,
+  rentCurrency,
 } from "@/lib/format";
+import { formatEmploymentRequirement } from "@/lib/employment-duration";
 
 type Phase =
   | "idle"
@@ -98,6 +99,7 @@ function VerifyByCslug({ slug }: { slug: string }) {
   }
 
   const requiredIncome = request.monthlyRent * request.salaryMultiplier;
+  const currency = rentCurrency(request);
 
   const handleRun = async () => {
     if (
@@ -185,9 +187,10 @@ function VerifyByCslug({ slug }: { slug: string }) {
             <CardBody className="grid sm:grid-cols-3 gap-4">
               <ThresholdCell
                 label="Monthly income"
-                value={`≥ ${formatMoney(requiredIncome)}`}
+                value={`≥ ${formatMoney(requiredIncome, currency)}`}
                 hint={`${request.salaryMultiplier}× rent of ${formatMoney(
-                  request.monthlyRent
+                  request.monthlyRent,
+                  currency
                 )}`}
               />
               <ThresholdCell
@@ -196,7 +199,7 @@ function VerifyByCslug({ slug }: { slug: string }) {
               />
               <ThresholdCell
                 label="Employment"
-                value={`≥ ${formatMonths(request.minEmploymentMonths)}`}
+                value={formatEmploymentRequirement(request.minEmploymentMonths)}
               />
             </CardBody>
           </Card>
