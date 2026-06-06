@@ -1,11 +1,13 @@
 import { arbitrumSepolia, sepolia } from "viem/chains";
 import type { Chain } from "viem";
 
-export const REOWN_PROJECT_ID =
-  process.env.NEXT_PUBLIC_REOWN_PROJECT_ID ?? "";
+export const REOWN_PROJECT_ID = (
+  process.env.NEXT_PUBLIC_REOWN_PROJECT_ID ?? ""
+).trim();
 
-export const CONTRACT_ADDRESS = (process.env
-  .NEXT_PUBLIC_TRSTIT_CONTRACT_ADDRESS ?? "") as `0x${string}`;
+export const CONTRACT_ADDRESS = (
+  process.env.NEXT_PUBLIC_TRSTIT_CONTRACT_ADDRESS ?? ""
+).trim() as `0x${string}`;
 
 const overrideChainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? 0);
 
